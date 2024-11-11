@@ -5,16 +5,13 @@ namespace Bayfront\BonesService\Orm\Filters;
 use Bayfront\Bones\Abstracts\FilterSubscriber;
 use Bayfront\Bones\Application\Services\Filters\FilterSubscription;
 use Bayfront\Bones\Interfaces\FilterSubscriberInterface;
-use Bayfront\BonesService\Orm\OrmService;
 
 class OrmServiceFilters extends FilterSubscriber implements FilterSubscriberInterface
 {
 
-    protected OrmService $ormService;
-
-    public function __construct(OrmService $ormService)
+    public function __construct()
     {
-        $this->ormService = $ormService;
+
     }
 
     /**

@@ -18,6 +18,7 @@ use Bayfront\BonesService\Orm\Interfaces\QueryParserInterface;
 use Bayfront\BonesService\Orm\OrmCollection;
 use Bayfront\BonesService\Orm\OrmResource;
 use Bayfront\BonesService\Orm\OrmService;
+use Bayfront\BonesService\Orm\Traits\Filterable;
 use Bayfront\BonesService\Orm\Traits\SoftDeletes;
 use Bayfront\SimplePdo\Exceptions\QueryException;
 use Bayfront\SimplePdo\Query;
@@ -37,6 +38,7 @@ abstract class ResourceModel extends OrmModel
      */
     public function __construct(OrmService $ormService)
     {
+
         if (!isset($this->default_limit)) {
             $this->default_limit = (int)$ormService->getConfig('resource.default_limit', 100);
         }
@@ -57,11 +59,12 @@ abstract class ResourceModel extends OrmModel
             throw new InvalidConfigurationException('Unable to initialize resource (' . self::class . '): Cursor field must be readable');
         }
 
-        if (!empty(Arr::except($this->search_fields, $this->allowed_fields_read))) {
+        if (!Arr::hasAllValues($this->allowed_fields_read, $this->search_fields)) {
             throw new InvalidConfigurationException('Unable to initialize resource (' . self::class . '): Search fields must be readable');
         }
 
         parent::__construct($ormService);
+
     }
 
     /**
@@ -108,6 +111,7 @@ abstract class ResourceModel extends OrmModel
 
     /**
      * Unique fields whose values are checked on create/update.
+     * The database is queried once for each key.
      *
      * Uniqueness of a single field as a string, or across multiple fields as an array.
      *
@@ -737,6 +741,12 @@ abstract class ResourceModel extends OrmModel
                 $search_fields = $this->allowed_fields_read;
             }
 
+            try {
+                $query->startGroup($query::CONDITION_AND);
+            } catch (QueryException) {
+                throw new UnexpectedException('Unable to list resource: Error performing search');
+            }
+
             foreach ($search_fields as $field) {
 
                 try {
@@ -746,6 +756,8 @@ abstract class ResourceModel extends OrmModel
                 }
 
             }
+
+            $query->endGroup();
 
         }
 
@@ -929,6 +941,7 @@ abstract class ResourceModel extends OrmModel
      * - Remove cursor field if not requested
      * - Convert JSON fields to dot notation
      * - Process accessors on all returned resources
+     * - Trait: Filter on read
      *
      * @param ResourceModel $model
      * @param QueryParserInterface $parser
@@ -978,7 +991,20 @@ abstract class ResourceModel extends OrmModel
 
         }
 
-        return $this->processAccessors($model, $resource);
+        $resource = $this->processAccessors($model, $resource);
+
+        /*
+         * Trait: Filterable
+         */
+
+        if (in_array(Filterable::class, Helpers::classUses($this))) {
+
+            /** @var Filterable $this */
+            $resource = $this->filterOnRead($resource);
+
+        }
+
+        return $resource;
 
     }
 
@@ -1075,13 +1101,13 @@ abstract class ResourceModel extends OrmModel
             throw new MissingFieldException('Unable to create resource: Missing required field(s)');
         }
 
-        // Mutators
-
-        $fields = $this->processMutators($this, $fields);
-
         // Allowed fields/validation
 
         $this->validateAllowedFieldsWrite($fields, 'create');
+
+        // Mutators
+
+        $fields = $this->processMutators($this, $fields);
 
         // Default fields
 
@@ -1121,9 +1147,20 @@ abstract class ResourceModel extends OrmModel
 
         }
 
+        /*
+         * Trait: Filterable
+         */
+
+        if (in_array(Filterable::class, Helpers::classUses($this))) {
+
+            /** @var Filterable $this */
+            $fields = $this->filterOnCreate($fields);
+
+        }
+
         // Create
 
-        $create = $this->ormService->db->insert($this->table_name, $fields);
+        $create = $this->ormService->db->insert($this->table_name, $fields, false);
 
         if (!$create) {
             throw new UnexpectedException('Unable to create resource');
@@ -1253,6 +1290,10 @@ abstract class ResourceModel extends OrmModel
 
         $start_time = microtime(true);
 
+        //echo $query->getLastQuery();
+        //print_r($query->getLastParameters());
+        //die;
+
         $get = $query->get();
 
         $this->ormService->db->setQueryTime($this->ormService->db->getCurrentConnectionName(), microtime(true) - $start_time);
@@ -1326,7 +1367,20 @@ abstract class ResourceModel extends OrmModel
             throw new DoesNotExistException('Resource does not exist');
         }
 
-        return $this->processAccessors($this, $resource);
+        $resource = $this->processAccessors($this, $resource);
+
+        /*
+         * Trait: Filterable
+         */
+
+        if (in_array(Filterable::class, Helpers::classUses($this))) {
+
+            /** @var Filterable $this */
+            $resource = $this->filterOnRead($resource);
+
+        }
+
+        return $resource;
 
     }
 
@@ -1404,13 +1458,13 @@ abstract class ResourceModel extends OrmModel
 
         $existing = $this->read($primary_key_id); // Resets trashed filters
 
-        // Mutators
-
-        $fields = $this->processMutators($this, $fields);
-
         // Allowed fields/validation
 
         $this->validateAllowedFieldsWrite($fields, 'update');
+
+        // Mutators
+
+        $fields = $this->processMutators($this, $fields);
 
         // Related fields
 
@@ -1470,6 +1524,17 @@ abstract class ResourceModel extends OrmModel
                 }
 
             }
+
+        }
+
+        /*
+         * Trait: Filterable
+         */
+
+        if (in_array(Filterable::class, Helpers::classUses($this))) {
+
+            /** @var Filterable $this */
+            $fields = $this->filterOnUpdate($primary_key_id, $fields);
 
         }
 
