@@ -2,9 +2,9 @@
 
 namespace _namespace_\Models;
 
-use Bayfront\Bones\Exceptions\InvalidConfigurationException;
-use Bayfront\BonesService\Orm\Models\ResourceModel;
+use Bayfront\BonesService\Orm\Exceptions\InvalidConfigurationException;
 use Bayfront\BonesService\Orm\Exceptions\InvalidDatabaseNameException;
+use Bayfront\BonesService\Orm\Models\ResourceModel;
 use Bayfront\BonesService\Orm\OrmService;
 
 /**
@@ -89,6 +89,7 @@ class _model_name_ extends ResourceModel
 
     /**
      * Unique fields whose values are checked on create/update.
+     * The database is queried once for each key.
      *
      * Uniqueness of a single field as a string, or across multiple fields as an array.
      *

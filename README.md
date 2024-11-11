@@ -23,7 +23,7 @@ This project is open source and available under the [MIT License](LICENSE).
 
 * PHP >= 8.0
 * Bones >= 5.3
-* PHP extensions: JSON, OpenSSL, PDO
+* PHP extensions: Ctype, JSON, OpenSSL, PDO
 
 ## Installation
 

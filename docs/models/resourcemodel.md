@@ -73,6 +73,7 @@ This associates the column in the model's table with the primary key of the rela
 ## allowed_fields_write
 
 Rules for any fields which can be written to the resource.
+These rules are validated before being processed by [getMutatorFields](#getmutatorfields).
 
 See [Validator](https://github.com/bayfrontmedia/php-validator/blob/master/docs/validator.md) library.
 
@@ -98,6 +99,7 @@ Fields required to be written to the resource on creation.
 ## unique_fields
 
 Unique fields whose values are checked on create/update.
+The database is queried once for each key.
 
 Uniqueness of a single field as a string, or across multiple fields as an array.
 
