@@ -242,20 +242,11 @@ abstract class ResourceModel extends OrmModel
     private function checkRelatedFieldsExist(array $fields, string $action): void
     {
 
-        foreach ($this->related_fields as $column => $resource_model) {
+        foreach ($this->related_fields as $column => $namespaced_class) {
 
             if (isset($fields[$column])) {
 
-                if (!is_subclass_of($resource_model, ResourceModel::class)) {
-                    throw new DoesNotExistException('Unable to ' . $action . ' resource: Related field (' . $column . ') does not extend ' . ResourceModel::class);
-                }
-
-                try {
-                    /** @var ResourceModel $related_model */
-                    $related_model = App::make($resource_model);
-                } catch (Exception) {
-                    throw new UnexpectedException('Unable to ' . $action . ' resource: Unable to create ' . $resource_model . ' for related field (' . $column . ')');
-                }
+                $related_model = $this->getRelatedModel($namespaced_class);
 
                 if (!$related_model->exists($fields[$column])) {
                     throw new DoesNotExistException('Unable to ' . $action . ' resource: Related field (' . $column . ') does not exist');
@@ -385,19 +376,41 @@ abstract class ResourceModel extends OrmModel
         }
     }
 
+    /**
+     * Get related model instance.
+     *
+     * @param string $namespaced_class
+     * @return ResourceModel
+     * @throws UnexpectedException
+     */
     private function getRelatedModel(string $namespaced_class): ResourceModel
     {
 
-        /** @var ResourceModel $rel_model */
-
-        if (isset($this->resource_instances[$namespaced_class])) {
-            $rel_model = $this->resource_instances[$namespaced_class];
-        } else {
-            $rel_model = new $namespaced_class($this->ormService);
-            $this->resource_instances[$namespaced_class] = $rel_model;
+        if (!is_subclass_of($namespaced_class, ResourceModel::class)) {
+            throw new UnexpectedException('Unable to get related model: Class (' . $namespaced_class . ') does not extend ' . ResourceModel::class);
         }
 
-        return $rel_model;
+
+        if (isset($this->resource_instances[$namespaced_class])) {
+
+            return $this->resource_instances[$namespaced_class];
+
+        } else {
+
+            try {
+
+                /** @var ResourceModel $rel_model */
+                $rel_model = App::make($namespaced_class);
+
+            } catch (Exception) {
+                throw new UnexpectedException('Unable to get related model: Unable to create class (' . $namespaced_class . ')');
+            }
+
+            $this->resource_instances[$namespaced_class] = $rel_model;
+
+            return $rel_model;
+
+        }
 
     }
 
@@ -474,6 +487,7 @@ abstract class ResourceModel extends OrmModel
      * @param string $column
      * @return void
      * @throws InvalidRequestException
+     * @throws UnexpectedException
      */
     private function selectListFields(Query $query, ResourceModel $model, array $fields, string $column = ''): void
     {
@@ -916,12 +930,17 @@ abstract class ResourceModel extends OrmModel
     /**
      * Ensure cursor field is removed if not requested.
      *
+     * @param ResourceModel $model
      * @param QueryParserInterface $parser
      * @param array $resource
      * @return array
      */
-    private function removeListFields(QueryParserInterface $parser, array $resource): array
+    private function removeListFields(ResourceModel $model, QueryParserInterface $parser, array $resource): array
     {
+
+        if ($model::class !== $this::class) { // Ignore related fields
+            return $resource;
+        }
 
         $fields = $parser->getFields();
 
@@ -952,7 +971,7 @@ abstract class ResourceModel extends OrmModel
     private function postListFunctions(ResourceModel $model, QueryParserInterface $parser, array $resource): array
     {
 
-        $resource = $this->removeListFields($parser, $resource);
+        $resource = $this->removeListFields($model, $parser, $resource);
 
         foreach ($resource as $col => $value) {
 
@@ -1289,10 +1308,6 @@ abstract class ResourceModel extends OrmModel
          */
 
         $start_time = microtime(true);
-
-        //echo $query->getLastQuery();
-        //print_r($query->getLastParameters());
-        //die;
 
         $get = $query->get();
 

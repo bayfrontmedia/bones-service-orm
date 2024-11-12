@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities
 
+## [1.2.0] - Upcoming
+
+### Changed
+
+- Optimized creation of related resources in `ResourceModel`.
+
 ## [1.1.0] - 2024.11.11
 
 ### Added
