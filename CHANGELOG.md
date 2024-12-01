@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities
 
+## [1.0.0-beta.1] - Upcoming
+
+### Changed
+
+- If no fields are defined in the `QueryParserInterface`, all readable fields will be returned.
+
 ## [1.0.0-beta] - 2024.11.29
 
 ### Added

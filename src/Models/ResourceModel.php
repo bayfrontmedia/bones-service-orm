@@ -902,6 +902,7 @@ abstract class ResourceModel extends OrmModel
 
     /**
      * Ensure cursor field is always added.
+     * If no fields are specified, all readable fields will be returned.
      *
      * @param QueryParserInterface $parser
      * @return array
@@ -910,6 +911,10 @@ abstract class ResourceModel extends OrmModel
     {
 
         $fields = $parser->getFields();
+
+        if (empty($fields)) {
+            return $this->allowed_fields_read;
+        }
 
         foreach ($fields as $field) {
             if ($field == $this->cursor_field || str_starts_with($field, '*')) {
