@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0-beta.1] - Upcoming
 
+### Added
+
+- Added `$required_fields` property to `ResourceModel`
+- Added `getRequiredFields`, `getAllowedFieldsWrite` and `getAllowedFieldsRead` methods to `ResourceModel`.
+
 ### Changed
 
 - If no fields are defined in the `QueryParserInterface`, all readable fields will be returned.

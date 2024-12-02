@@ -79,7 +79,15 @@ abstract class ResourceModel extends OrmModel
     protected array $related_fields = [];
 
     /**
+     * Fields which are required when creating resource.
+     *
+     * @var array
+     */
+    protected array $required_fields = [];
+
+    /**
      * Rules for any fields which can be written to the resource.
+     * If a field is required, use $required_fields instead.
      *
      * See: https://github.com/bayfrontmedia/php-validator/blob/master/docs/validator.md
      *
@@ -1134,6 +1142,36 @@ abstract class ResourceModel extends OrmModel
     }
 
     /**
+     * Get fields which are required when creating resource.
+     *
+     * @return array
+     */
+    public function getRequiredFields(): array
+    {
+        return $this->required_fields;
+    }
+
+    /**
+     * Get rules for any fields which can be written to the resource.
+     *
+     * @return array
+     */
+    public function getAllowedFieldsWrite(): array
+    {
+        return $this->allowed_fields_write;
+    }
+
+    /**
+     * Get fields which can be read from the resource.
+     *
+     * @return array
+     */
+    public function getAllowedFieldsRead(): array
+    {
+        return $this->allowed_fields_read;
+    }
+
+    /**
      * Get total number of resources.
      *
      * Query is filtered through the onReading method.
@@ -1279,6 +1317,14 @@ abstract class ResourceModel extends OrmModel
     {
 
         $this->doBegin(__FUNCTION__);
+
+        // Required fields
+
+        foreach ($this->required_fields as $field) {
+            if (!isset($fields[$field])) {
+                throw new InvalidFieldException('Unable to create resource: Required field (' . $field . ') does not exist');
+            }
+        }
 
         // Allowed fields/validation
 
