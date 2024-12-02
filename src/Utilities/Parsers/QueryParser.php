@@ -139,10 +139,14 @@ class QueryParser implements QueryParserInterface
      */
     private function decodeJson(mixed $value): array
     {
-        if (is_string($value)) {
+        if (is_array($value)) {
+            return $value;
+        } else if (is_string($value)) {
             return json_decode($value, true);
         }
-        return (array)$value;
+
+        return [];
+
     }
 
     /**
