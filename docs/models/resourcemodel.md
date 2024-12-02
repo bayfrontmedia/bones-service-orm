@@ -104,7 +104,7 @@ See [Validator](https://github.com/bayfrontmedia/php-validator/blob/master/docs/
 
 ```php
 protected array $allowed_fields_write = [
-    'name' => 'required|isString|lengthLessThan:255',
+    'name' => 'isString|lengthLessThan:255',
     'description' => 'isString|lengthLessThan:255',
 ];
 ```
