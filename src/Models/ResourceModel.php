@@ -840,6 +840,16 @@ abstract class ResourceModel extends OrmModel
 
         $fields = $parser->getFields();
 
+        /*
+         * If $fields is empty (no fields were requested),
+         * all readable fields are returned (see getListFields).
+         * Do not remove the cursor field.
+         */
+
+        if (empty($fields)) {
+            return $resource;
+        }
+
         foreach ($fields as $field) {
             if ($field == $this->cursor_field || str_starts_with($field, '*')) {
                 return $resource;
