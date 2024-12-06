@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `$required_fields` property to `ResourceModel`
 - Added `getRequiredFields`, `getAllowedFieldsWrite` and `getAllowedFieldsRead` methods to `ResourceModel`.
+- Added ability to read only selected fields in `ResourceModel`
 
 ### Changed
 

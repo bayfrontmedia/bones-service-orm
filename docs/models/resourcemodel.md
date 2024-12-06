@@ -493,6 +493,7 @@ Get entire resource.
 **Parameters:**
 
 - `$primary_key_id` (mixed)
+- `$fields = []` (array): Fields to read, or empty for all readable
 
 **Returns:**
 
@@ -501,6 +502,7 @@ Get entire resource.
 **Throws:**
 
 - `Bayfront\BonesService\Orm\Exceptions\DoesNotExistException`
+- `Bayfront\BonesService\Orm\Exceptions\InvalidRequestException`
 - `Bayfront\BonesService\Orm\Exceptions\UnexpectedException`
 
 ## find

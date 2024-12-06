@@ -1548,20 +1548,36 @@ abstract class ResourceModel extends OrmModel
      * Get entire resource.
      *
      * @param mixed $primary_key_id
+     * @param array $fields (Fields to read, or empty for all readable)
      * @return array
      * @throws DoesNotExistException
+     * @throws InvalidRequestException
      * @throws UnexpectedException
      */
-    public function read(mixed $primary_key_id): array
+    public function read(mixed $primary_key_id, array $fields = []): array
     {
 
         $this->doBegin(__FUNCTION__);
+
+        if (empty($fields)) {
+
+            $select = $this->allowed_fields_read;
+
+        } else {
+
+            if (!empty(Arr::except($fields, $this->allowed_fields_read))) {
+                throw new InvalidRequestException('Unable to read resource: Invalid field(s)');
+            }
+
+            $select = $fields;
+
+        }
 
         try {
 
             $query = $this->newQuery();
             $query->table($this->table_name)
-                ->select($this->allowed_fields_read)
+                ->select($select)
                 ->where($this->primary_key, Query::OPERATOR_EQUALS, $primary_key_id);
 
         } catch (QueryException) {
@@ -1653,7 +1669,11 @@ abstract class ResourceModel extends OrmModel
 
         // Only keep allowed fields to write
 
-        $existing = Arr::only($this->read($primary_key_id), array_keys($this->allowed_fields_write));
+        try {
+            $existing = Arr::only($this->read($primary_key_id), array_keys($this->allowed_fields_write));
+        } catch (InvalidRequestException) {
+            throw new UnexpectedException('Unable to replicate resource: Error reading existing resource');
+        }
 
         // Merge with new field values
 
