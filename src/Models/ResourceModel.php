@@ -1565,8 +1565,10 @@ abstract class ResourceModel extends OrmModel
 
         } else {
 
-            if (!empty(Arr::except($fields, $this->allowed_fields_read))) {
-                throw new InvalidRequestException('Unable to read resource: Invalid field(s)');
+            foreach ($fields as $field) {
+                if (!in_array($field, $this->allowed_fields_read)) {
+                    throw new InvalidRequestException('Unable to read resource: Invalid field (' . $field . ')');
+                }
             }
 
             $select = $fields;
