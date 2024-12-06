@@ -490,6 +490,8 @@ List resources.
 
 Get entire resource.
 
+A [FieldParserInterface](../utilities/fieldparserinterface.md) can be used to identify requested fields.
+
 **Parameters:**
 
 - `$primary_key_id` (mixed)
