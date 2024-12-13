@@ -1430,6 +1430,15 @@ abstract class ResourceModel extends OrmModel
 
         $this->selectListFields($query, $this, $this->getListFields($parser));
 
+        /*
+         * JOINs will result in an unknown column error if attempted on
+         * another field not yet joined.
+         * Sorting the list_joins array by key in ascending order will
+         * hopefully resolve this issue from occurring.
+         */
+
+        ksort($this->list_joins);
+
         foreach ($this->list_joins as $table => $cols) {
             foreach ($cols as $col1 => $col2) {
                 $query->leftJoin($table, $col1, $col2);
@@ -1519,6 +1528,8 @@ abstract class ResourceModel extends OrmModel
          * Query
          */
 
+        //echo $query->getLastQuery();
+        //die;
         $start_time = microtime(true);
         $get = $query->get();
         $this->ormService->db->setQueryTime($this->ormService->db->getCurrentConnectionName(), microtime(true) - $start_time);
