@@ -79,7 +79,15 @@ abstract class ResourceModel extends OrmModel
     protected array $related_fields = [];
 
     /**
+     * Fields which are required when creating resource.
+     *
+     * @var array
+     */
+    protected array $required_fields = [];
+
+    /**
      * Rules for any fields which can be written to the resource.
+     * If a field is required, use $required_fields instead.
      *
      * See: https://github.com/bayfrontmedia/php-validator/blob/master/docs/validator.md
      *
@@ -832,6 +840,16 @@ abstract class ResourceModel extends OrmModel
 
         $fields = $parser->getFields();
 
+        /*
+         * If $fields is empty (no fields were requested),
+         * all readable fields are returned (see getListFields).
+         * Do not remove the cursor field.
+         */
+
+        if (empty($fields)) {
+            return $resource;
+        }
+
         foreach ($fields as $field) {
             if ($field == $this->cursor_field || str_starts_with($field, '*')) {
                 return $resource;
@@ -902,6 +920,7 @@ abstract class ResourceModel extends OrmModel
 
     /**
      * Ensure cursor field is always added.
+     * If no fields are specified, all readable fields will be returned.
      *
      * @param QueryParserInterface $parser
      * @return array
@@ -910,6 +929,10 @@ abstract class ResourceModel extends OrmModel
     {
 
         $fields = $parser->getFields();
+
+        if (empty($fields)) {
+            return $this->allowed_fields_read;
+        }
 
         foreach ($fields as $field) {
             if ($field == $this->cursor_field || str_starts_with($field, '*')) {
@@ -1129,6 +1152,36 @@ abstract class ResourceModel extends OrmModel
     }
 
     /**
+     * Get fields which are required when creating resource.
+     *
+     * @return array
+     */
+    public function getRequiredFields(): array
+    {
+        return $this->required_fields;
+    }
+
+    /**
+     * Get rules for any fields which can be written to the resource.
+     *
+     * @return array
+     */
+    public function getAllowedFieldsWrite(): array
+    {
+        return $this->allowed_fields_write;
+    }
+
+    /**
+     * Get fields which can be read from the resource.
+     *
+     * @return array
+     */
+    public function getAllowedFieldsRead(): array
+    {
+        return $this->allowed_fields_read;
+    }
+
+    /**
      * Get total number of resources.
      *
      * Query is filtered through the onReading method.
@@ -1275,6 +1328,14 @@ abstract class ResourceModel extends OrmModel
 
         $this->doBegin(__FUNCTION__);
 
+        // Required fields
+
+        foreach ($this->required_fields as $field) {
+            if (!isset($fields[$field])) {
+                throw new InvalidFieldException('Unable to create resource: Required field (' . $field . ') does not exist');
+            }
+        }
+
         // Allowed fields/validation
 
         $this->validateAllowedFieldsWrite($fields, __FUNCTION__);
@@ -1368,6 +1429,15 @@ abstract class ResourceModel extends OrmModel
          */
 
         $this->selectListFields($query, $this, $this->getListFields($parser));
+
+        /*
+         * JOINs will result in an unknown column error if attempted on
+         * another field not yet joined.
+         * Sorting the list_joins array by key in ascending order will
+         * hopefully resolve this issue from occurring.
+         */
+
+        ksort($this->list_joins);
 
         foreach ($this->list_joins as $table => $cols) {
             foreach ($cols as $col1 => $col2) {
@@ -1487,20 +1557,38 @@ abstract class ResourceModel extends OrmModel
      * Get entire resource.
      *
      * @param mixed $primary_key_id
+     * @param array $fields (Fields to read, or empty for all readable)
      * @return array
      * @throws DoesNotExistException
+     * @throws InvalidRequestException
      * @throws UnexpectedException
      */
-    public function read(mixed $primary_key_id): array
+    public function read(mixed $primary_key_id, array $fields = []): array
     {
 
         $this->doBegin(__FUNCTION__);
+
+        if (empty($fields)) {
+
+            $select = $this->allowed_fields_read;
+
+        } else {
+
+            foreach ($fields as $field) {
+                if (!in_array($field, $this->allowed_fields_read)) {
+                    throw new InvalidRequestException('Unable to read resource: Invalid field (' . $field . ')');
+                }
+            }
+
+            $select = $fields;
+
+        }
 
         try {
 
             $query = $this->newQuery();
             $query->table($this->table_name)
-                ->select($this->allowed_fields_read)
+                ->select($select)
                 ->where($this->primary_key, Query::OPERATOR_EQUALS, $primary_key_id);
 
         } catch (QueryException) {
@@ -1592,7 +1680,11 @@ abstract class ResourceModel extends OrmModel
 
         // Only keep allowed fields to write
 
-        $existing = Arr::only($this->read($primary_key_id), array_keys($this->allowed_fields_write));
+        try {
+            $existing = Arr::only($this->read($primary_key_id), array_keys($this->allowed_fields_write));
+        } catch (InvalidRequestException) {
+            throw new UnexpectedException('Unable to replicate resource: Error reading existing resource');
+        }
 
         // Merge with new field values
 

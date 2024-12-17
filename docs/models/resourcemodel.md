@@ -14,6 +14,7 @@ Configuration includes:
 - [primary_key](#primary_key)
 - [cursor_field](#cursor_field)
 - [related_fields](#related_fields)
+- [required_fields](#required_fields)
 - [allowed_fields_write](#allowed_fields_write)
 - [unique_fields](#unique_fields)
 - [allowed_fields_read](#allowed_fields_read)
@@ -37,6 +38,9 @@ Methods include:
 - [onBegin](#onbegin)
 - [onComplete](#oncomplete)
 - [getPrimaryKey](#getprimarykey)
+- [getRequiredFields](#getrequiredfields)
+- [getAllowedFieldsWrite](#getallowedfieldswrite)
+- [getAllowedFieldsRead](#getallowedfieldsread)
 - [getCount](#getcount)
 - [exists](#exists)
 - [create](#create)
@@ -79,9 +83,17 @@ This associates the column in the model's table with the primary key of the rela
 ];
 ```
 
+## required_fields
+
+Fields which are required when creating resource.
+
+- Visibility: `protected`
+- Type: `array`
+
 ## allowed_fields_write
 
 Rules for any fields which can be written to the resource.
+If a field is required, use `$required_fields` instead.
 
 See [Validator](https://github.com/bayfrontmedia/php-validator/blob/master/docs/validator.md) library.
 
@@ -92,7 +104,7 @@ See [Validator](https://github.com/bayfrontmedia/php-validator/blob/master/docs/
 
 ```php
 protected array $allowed_fields_write = [
-    'name' => 'required|isString|lengthLessThan:255',
+    'name' => 'isString|lengthLessThan:255',
     'description' => 'isString|lengthLessThan:255',
 ];
 ```
@@ -349,6 +361,48 @@ Get primary key field name.
 
 - (string)
 
+## getRequiredFields
+
+**Description:**
+
+Get fields which are required when creating resource.
+
+**Parameters:**
+
+- (none)
+
+**Returns:**
+
+- (array)
+
+## getAllowedFieldsWrite
+
+**Description:**
+
+Get rules for any fields which can be written to the resource.
+
+**Parameters:**
+
+- (none)
+
+**Returns:**
+
+- (array)
+
+## getAllowedFieldsRead
+
+**Description:**
+
+Get fields which can be read from the resource.
+
+**Parameters:**
+
+- (none)
+
+**Returns:**
+
+- (array)
+
 ## getCount
 
 **Description:**
@@ -436,9 +490,12 @@ List resources.
 
 Get entire resource.
 
+A [FieldParserInterface](../utilities/fieldparserinterface.md) can be used to identify requested fields.
+
 **Parameters:**
 
 - `$primary_key_id` (mixed)
+- `$fields = []` (array): Fields to read, or empty for all readable
 
 **Returns:**
 
@@ -447,6 +504,7 @@ Get entire resource.
 **Throws:**
 
 - `Bayfront\BonesService\Orm\Exceptions\DoesNotExistException`
+- `Bayfront\BonesService\Orm\Exceptions\InvalidRequestException`
 - `Bayfront\BonesService\Orm\Exceptions\UnexpectedException`
 
 ## find

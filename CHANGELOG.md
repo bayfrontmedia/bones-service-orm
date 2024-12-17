@@ -13,6 +13,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities
 
+## [1.0.0-beta.1] - 2024.12.17
+
+### Added
+
+- Added `$required_fields` property to `ResourceModel`
+- Added `getRequiredFields`, `getAllowedFieldsWrite` and `getAllowedFieldsRead` methods to `ResourceModel`.
+- Added ability to read only selected fields in `ResourceModel`
+- Added `FieldParserInterface`
+
+### Changed
+
+- If no fields are defined in the `QueryParserInterface`, all readable fields will be returned.
+
+### Fixed
+
+- Miscellaneous bugfixes
+
 ## [1.0.0-beta] - 2024.11.29
 
 ### Added

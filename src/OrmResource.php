@@ -4,6 +4,7 @@ namespace Bayfront\BonesService\Orm;
 
 use Bayfront\ArrayHelpers\Arr;
 use Bayfront\BonesService\Orm\Exceptions\DoesNotExistException;
+use Bayfront\BonesService\Orm\Exceptions\InvalidRequestException;
 use Bayfront\BonesService\Orm\Exceptions\UnexpectedException;
 use Bayfront\BonesService\Orm\Models\ResourceModel;
 
@@ -27,7 +28,13 @@ class OrmResource
     {
         $this->resourceModel = $resourceModel;
         $this->primary_key_id = $primary_key_id;
-        $this->resource = $resourceModel->read($primary_key_id);
+
+        try {
+            $this->resource = $resourceModel->read($primary_key_id);
+        } catch (InvalidRequestException) {
+            throw new UnexpectedException('Unable to construct resource: Error reading resource');
+        }
+
     }
 
     /**
