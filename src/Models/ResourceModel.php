@@ -1528,8 +1528,6 @@ abstract class ResourceModel extends OrmModel
          * Query
          */
 
-        //echo $query->getLastQuery();
-        //die;
         $start_time = microtime(true);
         $get = $query->get();
         $this->ormService->db->setQueryTime($this->ormService->db->getCurrentConnectionName(), microtime(true) - $start_time);
