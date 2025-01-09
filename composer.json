@@ -1,0 +1,44 @@
+{
+  "name": "bayfrontmedia/bones-service-orm",
+  "description": "Object-relational mapping service for the Bones framework",
+  "homepage": "https://github.com/bayfrontmedia/bones-service-orm",
+  "license" : "MIT",
+  "type": "library",
+  "keywords": [
+    "php",
+    "framework",
+    "bones",
+    "orm",
+    "database",
+    "mysql"
+  ],
+  "authors": [
+    {
+      "name": "John Robinson",
+      "email": "john@bayfrontmedia.com",
+      "homepage": "https://www.bayfrontmedia.com"
+    }
+  ],
+  "support": {
+    "issues": "https://github.com/bayfrontmedia/bones-service-orm/issues"
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "preferred-install": "dist"
+  },
+  "require": {
+    "php": ">=8.0",
+    "bayfrontmedia/bones": "^5.3",
+    "bayfrontmedia/encryptor": "^2.0",
+    "bayfrontmedia/php-array-helpers": "^2.0",
+    "bayfrontmedia/php-sanitize": "^2.1",
+    "bayfrontmedia/simple-pdo": "^5.4.2",
+    "bayfrontmedia/php-string-helpers": "^2.2",
+    "bayfrontmedia/php-validator": "^4.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Bayfront\\BonesService\\Orm\\": "src/"
+    }
+  }
+}
