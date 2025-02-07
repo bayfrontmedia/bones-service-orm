@@ -49,7 +49,11 @@ trait HasNullableJsonField
             'id' => $primary_key
         ]);
 
-        $meta = array_merge(Arr::dot(json_decode($meta, true)), Arr::dot($array));
+        if (is_string($meta)) {
+            $meta = array_merge(Arr::dot(json_decode($meta, true)), Arr::dot($array));
+        } else {
+            $meta = Arr::dot($array);
+        }
 
         foreach ($meta as $k => $v) {
             if ($v === null) {
