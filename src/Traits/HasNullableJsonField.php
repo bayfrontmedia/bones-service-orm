@@ -57,9 +57,13 @@ trait HasNullableJsonField
             'id' => $primary_key
         ]);
 
-        $meta_dot = json_decode($meta, true);
+        if (is_string($meta)) {
+            $meta_dot = json_decode($meta, true);
+        } else {
+            $meta_dot = [];
+        }
 
-        if (is_array($meta_dot)) {
+        if (is_array($meta_dot)) { // Checks decode was successful
             $meta = array_merge(Arr::dot($meta_dot), Arr::dot($array));
         } else {
             $meta = Arr::dot($array);
