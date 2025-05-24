@@ -12,6 +12,13 @@ trait HasNullableJsonField
 {
 
     /**
+     * Nullable JSON field.
+     *
+     * @return string
+     */
+    abstract protected function getNullableJsonField(): string;
+
+    /**
      * Define nullable JSON field array, removing keys with null values.
      *
      * @param array $array
@@ -39,13 +46,14 @@ trait HasNullableJsonField
      * @param string $table_name
      * @param string $primary_key_field
      * @param mixed $primary_key
+     * @param string $meta_field
      * @param array $array
      * @return array
      */
-    protected function updateNullableJsonField(OrmService $ormService, string $table_name, string $primary_key_field, mixed $primary_key, array $array): array
+    protected function updateNullableJsonField(OrmService $ormService, string $table_name, string $primary_key_field, mixed $primary_key, string $meta_field, array $array): array
     {
 
-        $meta = $ormService->db->single("SELECT $primary_key_field FROM $table_name WHERE $primary_key_field = :id", [
+        $meta = $ormService->db->single("SELECT $meta_field FROM $table_name WHERE $primary_key_field = :id", [
             'id' => $primary_key
         ]);
 
