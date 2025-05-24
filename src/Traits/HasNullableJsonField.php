@@ -46,14 +46,14 @@ trait HasNullableJsonField
      * @param string $table_name
      * @param string $primary_key_field
      * @param mixed $primary_key
-     * @param string $meta_field
+     * @param string $json_field
      * @param array $array
      * @return array
      */
-    protected function updateNullableJsonField(OrmService $ormService, string $table_name, string $primary_key_field, mixed $primary_key, string $meta_field, array $array): array
+    protected function updateNullableJsonField(OrmService $ormService, string $table_name, string $primary_key_field, mixed $primary_key, string $json_field, array $array): array
     {
 
-        $meta = $ormService->db->single("SELECT $meta_field FROM $table_name WHERE $primary_key_field = :id", [
+        $meta = $ormService->db->single("SELECT $json_field FROM $table_name WHERE $primary_key_field = :id", [
             'id' => $primary_key
         ]);
 

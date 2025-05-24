@@ -68,7 +68,7 @@ Update nullable JSON field array, merging updated array with existing and removi
 - `$table_name` (string)
 - `$primary_key_field` (string)
 - `$primary_key` (mixed)
-- `$meta_field` (string)
+- `$json_field` (string)
 - `$array` (array)
 
 **Returns:**
