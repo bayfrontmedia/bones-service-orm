@@ -3,10 +3,13 @@
 namespace Bayfront\BonesService\Orm\Traits;
 
 use Bayfront\ArrayHelpers\Arr;
+use Bayfront\BonesService\Orm\Exceptions\InvalidFieldException;
 use Bayfront\BonesService\Orm\OrmService;
 
 /**
  * Has a JSON field whose keys are removed by passing a NULL value.
+ *
+ * Keys can only contain alphanumeric characters, underscores and dashes.
  */
 trait HasNullableJsonField
 {
@@ -19,10 +22,27 @@ trait HasNullableJsonField
     abstract protected function getNullableJsonField(): string;
 
     /**
+     * Validate key.
+     *
+     * @param string $key
+     * @return void
+     * @throws InvalidFieldException
+     */
+    private function validateKey(string $key):  void
+    {
+
+        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $key)) {
+            throw new InvalidFieldException('Invalid ' . $this->getNullableJsonField() . ' key: Keys can only contain alphanumeric characters, underscores and dashes');
+        }
+
+    }
+
+    /**
      * Define nullable JSON field array, removing keys with null values.
      *
      * @param array $array
      * @return array
+     * @throws InvalidFieldException
      */
     protected function defineNullableJsonField(array $array): array
     {
@@ -30,9 +50,13 @@ trait HasNullableJsonField
         $array = Arr::dot($array);
 
         foreach ($array as $k => $v) {
+
+            $this->validateKey($k);
+
             if ($v === null) {
                 unset($array[$k]);
             }
+
         }
 
         return Arr::undot($array);
@@ -49,6 +73,7 @@ trait HasNullableJsonField
      * @param string $json_field
      * @param array $array
      * @return array
+     * @throws InvalidFieldException
      */
     protected function updateNullableJsonField(OrmService $ormService, string $table_name, string $primary_key_field, mixed $primary_key, string $json_field, array $array): array
     {
@@ -70,9 +95,13 @@ trait HasNullableJsonField
         }
 
         foreach ($meta as $k => $v) {
+
+            $this->validateKey($k);
+
             if ($v === null) {
                 unset($meta[$k]);
             }
+
         }
 
         return Arr::undot($meta);
