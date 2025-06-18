@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities
 
+## [1.1.2] - 2025.06.18
+
+### Fixed
+
+- Fixed bug in `ResourceModel` by assigning aliases to foreign keys
+
 ## [1.1.1] - 2025.06.18
 
 ### Added

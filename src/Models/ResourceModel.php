@@ -375,11 +375,12 @@ abstract class ResourceModel extends OrmModel
      * @param ResourceModel $model
      * @param array $fields
      * @param string $column
+     * @param string|null $alias
      * @return void
      * @throws InvalidRequestException
      * @throws UnexpectedException
      */
-    private function selectListFields(Query $query, ResourceModel $model, array $fields, string $column = ''): void
+    private function selectListFields(Query $query, ResourceModel $model, array $fields, string $column = '', ?string $alias = null): void
     {
 
         foreach ($fields as $field) {
@@ -411,7 +412,14 @@ abstract class ResourceModel extends OrmModel
                             if ($model::class === $this::class) {
                                 $query->select([$allowed]);
                             } else { // Prefix
-                                $query->select($model->table_name . '.' . $allowed . " AS '" . $this->getPrefixedField($model->table_name, $allowed, $column) . "'");
+
+                                if ($alias !== null) {
+                                    $table = $alias;
+                                } else {
+                                    $table = $model->table_name;
+                                }
+
+                                $query->select($table . '.' . $allowed . " AS '" . $this->getPrefixedField($model->table_name, $allowed, $column) . "'");
                             }
 
                         }
@@ -422,11 +430,13 @@ abstract class ResourceModel extends OrmModel
 
                     $rel_model = $this->getRelatedModel($model->related_fields[$field_exp[0]]);
 
-                    $this->list_joins[$rel_model->getTableName()] = [
-                        $model->getTableName() . '.' . $field_exp[0] => $rel_model->getTableName() . '.' . $rel_model->primary_key
+                    $join_alias = $model->table_name . '_' . $field_exp[0];
+
+                    $this->list_joins[$rel_model->getTableName() . ' AS ' . $join_alias] = [
+                        $model->getTableName() . '.' . $field_exp[0] => $join_alias . '.' . $rel_model->primary_key
                     ];
 
-                    $this->selectListFields($query, $rel_model, [$field_exp[1]], ltrim($column . '.' . $field_exp[0], '.'));
+                    $this->selectListFields($query, $rel_model, [$field_exp[1]], ltrim($column . '.' . $field_exp[0], '.'), $join_alias);
 
                 } else {
                     throw new InvalidRequestException('Unable to list resource: Invalid related field (' . $field . ')');
@@ -441,7 +451,14 @@ abstract class ResourceModel extends OrmModel
                     } else { // Prefix
 
                         foreach ($model->allowed_fields_read as $allowed) {
-                            $query->select($model->table_name . '.' . $allowed . " AS '" . $this->getPrefixedField($model->table_name, $allowed, $column) . "'");
+
+                            if ($alias !== null) {
+                                $table = $alias;
+                            } else {
+                                $table = $model->table_name;
+                            }
+
+                            $query->select($table . '.' . $allowed . " AS '" . $this->getPrefixedField($model->table_name, $allowed, $column) . "'");
                         }
 
                         $this->filterSoftDeletedRelatedFields($query, $model);
@@ -467,7 +484,13 @@ abstract class ResourceModel extends OrmModel
                         $query->select($field);
                     } else {
 
-                        $query->select($model->table_name . '.' . $field . " AS '" . $this->getPrefixedField($model->table_name, $field, $column) . "'");
+                        if ($alias !== null) {
+                            $table = $alias;
+                        } else {
+                            $table = $model->table_name;
+                        }
+
+                        $query->select($table . '.' . $field . " AS '" . $this->getPrefixedField($model->table_name, $field, $column) . "'");
 
                         $this->filterSoftDeletedRelatedFields($query, $model);
 
@@ -479,7 +502,13 @@ abstract class ResourceModel extends OrmModel
                         $query->select($field);
                     } else {
 
-                        $query->select($model->table_name . '.' . $field . " AS '" . $this->getPrefixedField($model->table_name, $field, $column) . "'");
+                        if ($alias !== null) {
+                            $table = $alias;
+                        } else {
+                            $table = $model->table_name;
+                        }
+
+                        $query->select($table . '.' . $field . " AS '" . $this->getPrefixedField($model->table_name, $field, $column) . "'");
 
                         $this->filterSoftDeletedRelatedFields($query, $model);
 
