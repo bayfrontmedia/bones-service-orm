@@ -3,6 +3,8 @@
 The `Bayfront\BonesService\Orm\Traits\HasNullableJsonField` trait can be used by any type of [model](../models/README.md)
 which has a JSON field whose keys are removed by passing a `NULL` value.
 
+Keys can only contain alphanumeric characters, underscores and dashes.
+
 Configuration includes:
 
 - [getNullableJsonField](#getnullablejsonfield)
@@ -54,7 +56,7 @@ Define nullable JSON field array, removing keys with null values.
 
 **Throws:**
 
-- (none)
+- `Bayfront\BonesService\Orm\Exceptions\InvalidFieldException`
 
 ## updateNullableJsonField
 
@@ -77,4 +79,4 @@ Update nullable JSON field array, merging updated array with existing and removi
 
 **Throws:**
 
-- (none)
+- `Bayfront\BonesService\Orm\Exceptions\InvalidFieldException`
