@@ -368,6 +368,16 @@ abstract class ResourceModel extends OrmModel
 
     }
 
+    private int $join_count = 0;
+
+    private function getTableAlias(string $table_name): string
+    {
+        $this->join_count++;
+
+        preg_match_all('/(?:^|_)([a-zA-Z])/', $table_name, $matches);
+        return implode('', $matches[1]) . $this->join_count;
+    }
+
     /**
      * Add field(s) to list query.
      *
@@ -401,7 +411,7 @@ abstract class ResourceModel extends OrmModel
 
                             $rel_model = $this->getRelatedModel($model->related_fields[$allowed]);
 
-                            $alias = $rel_model->getTableName() . '_' . $allowed;
+                            $alias = $this->getTableAlias($rel_model->getTableName());
 
                             $this->list_joins[$rel_model->getTableName() . ' AS ' . $alias] = [
                                 $model->getTableName() . '.' . $allowed => $alias . '.' . $rel_model->primary_key
@@ -433,7 +443,7 @@ abstract class ResourceModel extends OrmModel
 
                     $rel_model = $this->getRelatedModel($model->related_fields[$field_exp[0]]);
 
-                    $alias = $rel_model->getTableName() . '_' . $field_exp[0];
+                    $alias = $this->getTableAlias($rel_model->getTableName());
 
                     $this->list_joins[$rel_model->getTableName() . ' AS ' . $alias] = [
                         $model->getTableName() . '.' . $field_exp[0] => $alias . '.' . $rel_model->primary_key
@@ -1440,15 +1450,17 @@ abstract class ResourceModel extends OrmModel
 
     }
 
+    // ------------------------- Start -------------------------
+
     /**
      * Tables which have been sorted.
      *
      * @var array
      */
-    private array $sorted_join_tables = [];
+    private array $sorted_join_tables = []; // key = table, value = table or alias
 
     /**
-     * Sort joined tables to ensure the column belongs to a table already joined.
+     * Sort joined tables to ensure aliases are being used, if existing.
      *
      * @param array $array
      * @return array
@@ -1456,26 +1468,46 @@ abstract class ResourceModel extends OrmModel
     private function sortListJoins(array $array): array
     {
 
+        /*
+         * $array: key = table, value = array of join cols where key = col1 and value = col2
+         */
+
         $return = [];
 
-        foreach ($array as $table => $cols) {
+        foreach ($array as $table => $cols) { // $table = "table" or "table AS alias"
 
-            foreach ($cols as $col1 => $col2) {
+            foreach ($cols as $col1 => $col2) { // $col1, $col2 used by $query->leftJoin
 
-                $col1_table = explode('.', $col1, 2);
+                $table_exp = explode(' AS ', $table, 2);
 
-                if ($col1_table[0] == $this->table_name || in_array($col1_table[0], $this->sorted_join_tables)) {
+                $col1_exp = explode('.', $col1, 2); // $col1_exp[0] = table, $col1_exp[1] = column
 
-                    $return[$table] = $cols;
-                    $this->sorted_join_tables = array_unique(array_merge($this->sorted_join_tables, [$table]));
-                    unset($array[$table]);
+                if (isset($this->sorted_join_tables[$col1_exp[0]])) { // If a known table/alias
+
+                    // Overwrite original $col1 using known table/alias
+
+                    $col1 = $this->sorted_join_tables[$col1_exp[0]];
+
+                    if (isset($col1_exp[1])) { // Append column, if existing
+                        $col1 = $col1 . '.' . $col1_exp[1];
+                    }
+
+                } else { // Define table/alias
+
+                    if (isset($table_exp[1])) { // If an alias
+                        $this->sorted_join_tables[$table_exp[0]] = $table_exp[1];
+                    } else { // If a table
+                        $this->sorted_join_tables[$table] = $table;
+                    }
+
                 }
+
+                $return[$table] = [
+                    $col1 => $col2,
+                ];
+
             }
 
-        }
-
-        if (!empty($array)) {
-            $return = array_merge($return, $this->sortListJoins($array));
         }
 
         $this->sorted_join_tables = []; // Reset
@@ -1483,6 +1515,8 @@ abstract class ResourceModel extends OrmModel
         return $return;
 
     }
+
+    // ------------------------- End -------------------------
 
     /**
      * List resources.
