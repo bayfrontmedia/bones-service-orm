@@ -368,6 +368,15 @@ abstract class ResourceModel extends OrmModel
 
     }
 
+    /*
+     * $jonied_tables can only be used when a table is only joined one time.
+     * If a foreign key table is joined multiple times on the same table,
+     * it must be given a unique alias, as it is joined to a different column on the table.
+     *
+     * Therefore, $joined_tables is not used.
+     */
+    private array $joined_tables = []; // key = table, value = alias
+
     private int $join_count = 0;
 
     private function getTableAlias(string $table_name): string
@@ -411,13 +420,22 @@ abstract class ResourceModel extends OrmModel
 
                             $rel_model = $this->getRelatedModel($model->related_fields[$allowed]);
 
-                            $alias = $this->getTableAlias($rel_model->getTableName());
+                            if (!isset($this->joined_tables[$rel_model->getTableName()])) {
 
-                            $this->list_joins[$rel_model->getTableName() . ' AS ' . $alias] = [
-                                $model->getTableName() . '.' . $allowed => $alias . '.' . $rel_model->primary_key
-                            ];
+                                $rel_alias = $this->getTableAlias($rel_model->getTableName());
 
-                            $this->selectListFields($query, $rel_model, [$field_exp[1]], ltrim($column . '.' . $allowed, '.'), $alias);
+                                $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
+                                    $model->getTableName() . '.' . $allowed => $rel_alias . '.' . $rel_model->primary_key
+                                ];
+
+                                // Do not reuse alias
+                                //$this->joined_tables[$rel_model->getTableName()] = $rel_alias;
+
+                            } else {
+                                $rel_alias = $this->joined_tables[$rel_model->table_name];
+                            }
+
+                            $this->selectListFields($query, $rel_model, [$field_exp[1]], ltrim($column . '.' . $allowed, '.'), $rel_alias);
 
                         } else {
 
@@ -443,13 +461,22 @@ abstract class ResourceModel extends OrmModel
 
                     $rel_model = $this->getRelatedModel($model->related_fields[$field_exp[0]]);
 
-                    $alias = $this->getTableAlias($rel_model->getTableName());
+                    if (!isset($this->joined_tables[$rel_model->getTableName()])) {
 
-                    $this->list_joins[$rel_model->getTableName() . ' AS ' . $alias] = [
-                        $model->getTableName() . '.' . $field_exp[0] => $alias . '.' . $rel_model->primary_key
-                    ];
+                        $rel_alias = $this->getTableAlias($rel_model->getTableName());
 
-                    $this->selectListFields($query, $rel_model, [$field_exp[1]], ltrim($column . '.' . $field_exp[0], '.'), $alias);
+                        $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
+                            $model->getTableName() . '.' . $field_exp[0] => $rel_alias . '.' . $rel_model->primary_key
+                        ];
+
+                        // Do not reuse alias
+                        //$this->joined_tables[$rel_model->getTableName()] = $rel_alias;
+
+                    } else {
+                        $rel_alias = $this->joined_tables[$rel_model->table_name];
+                    }
+
+                    $this->selectListFields($query, $rel_model, [$field_exp[1]], ltrim($column . '.' . $field_exp[0], '.'), $rel_alias);
 
                 } else {
                     throw new InvalidRequestException('Unable to list resource: Invalid related field (' . $field . ')');
@@ -1546,6 +1573,8 @@ abstract class ResourceModel extends OrmModel
         }
 
         $this->list_joins = []; // Reset
+        $this->joined_tables = []; // Reset
+        $this->join_count = 0; // Reset
 
         /*
          * Filter
