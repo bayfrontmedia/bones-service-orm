@@ -1450,8 +1450,6 @@ abstract class ResourceModel extends OrmModel
 
     }
 
-    // ------------------------- Start -------------------------
-
     /**
      * Tables which have been sorted.
      *
@@ -1515,8 +1513,6 @@ abstract class ResourceModel extends OrmModel
         return $return;
 
     }
-
-    // ------------------------- End -------------------------
 
     /**
      * List resources.
