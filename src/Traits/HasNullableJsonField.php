@@ -103,7 +103,7 @@ trait HasNullableJsonField
 
         }
 
-        ksort($array);
+        ksort($meta);
 
         return $meta;
 
