@@ -2,7 +2,6 @@
 
 namespace Bayfront\BonesService\Orm\Traits;
 
-use Bayfront\ArrayHelpers\Arr;
 use Bayfront\BonesService\Orm\Exceptions\InvalidFieldException;
 use Bayfront\BonesService\Orm\OrmService;
 
@@ -47,8 +46,6 @@ trait HasNullableJsonField
     protected function defineNullableJsonField(array $array): array
     {
 
-        $array = Arr::dot($array);
-
         foreach ($array as $k => $v) {
 
             $this->validateKey($k);
@@ -59,7 +56,9 @@ trait HasNullableJsonField
 
         }
 
-        return Arr::undot($array);
+        ksort($array);
+
+        return $array;
 
     }
 
@@ -83,15 +82,15 @@ trait HasNullableJsonField
         ]);
 
         if (is_string($meta)) {
-            $meta_dot = json_decode($meta, true);
+            $existing_meta = json_decode($meta, true);
         } else {
-            $meta_dot = [];
+            $existing_meta = [];
         }
 
-        if (is_array($meta_dot)) { // Checks decode was successful
-            $meta = array_merge(Arr::dot($meta_dot), Arr::dot($array));
+        if (is_array($existing_meta)) { // Checks decode was successful
+            $meta = array_merge($existing_meta, $array);
         } else {
-            $meta = Arr::dot($array);
+            $meta = $array;
         }
 
         foreach ($meta as $k => $v) {
@@ -104,7 +103,9 @@ trait HasNullableJsonField
 
         }
 
-        return Arr::undot($meta);
+        ksort($array);
+
+        return $meta;
 
     }
 
