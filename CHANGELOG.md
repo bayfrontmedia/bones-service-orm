@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Updated `HasNullableJsonField` to not dot arrays
+- Updated `jsonDecode` method of `Castable` trait to order keys alphabetically
 
 ### Fixed
 

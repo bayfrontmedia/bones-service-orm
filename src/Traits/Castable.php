@@ -45,7 +45,9 @@ trait Castable
         $json = new IsJson($value);
 
         if ($json->isValid()) {
-            return json_decode($value, true);
+            $value = json_decode($value, true);
+            ksort($value);
+            return $value;
         }
 
         return (array)$value;
