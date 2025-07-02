@@ -1505,6 +1505,22 @@ abstract class ResourceModel extends OrmModel
 
                 $table_exp = explode(' AS ', $table, 2);
 
+                // Ensure table is saved
+
+                if (isset($table_exp[1])) { // If an alias
+
+                    if (!isset($this->sorted_join_tables[$table_exp[0]])) {
+                        $this->sorted_join_tables[$table_exp[0]] = $table_exp[1];
+                    }
+
+                } else { // If no alias (the table)
+
+                    if (!isset($this->sorted_join_tables[$table])) {
+                        $this->sorted_join_tables[$table] = $table;
+                    }
+
+                }
+
                 $col1_exp = explode('.', $col1, 2); // $col1_exp[0] = table, $col1_exp[1] = column
 
                 if (isset($this->sorted_join_tables[$col1_exp[0]])) { // If a known table/alias
@@ -1515,14 +1531,6 @@ abstract class ResourceModel extends OrmModel
 
                     if (isset($col1_exp[1])) { // Append column, if existing
                         $col1 = $col1 . '.' . $col1_exp[1];
-                    }
-
-                } else { // Define table/alias
-
-                    if (isset($table_exp[1])) { // If an alias
-                        $this->sorted_join_tables[$table_exp[0]] = $table_exp[1];
-                    } else { // If a table
-                        $this->sorted_join_tables[$table] = $table;
                     }
 
                 }
