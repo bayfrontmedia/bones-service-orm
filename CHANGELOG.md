@@ -19,10 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated `HasNullableJsonField` to not dot arrays
 - Updated `jsonDecode` method of `Castable` trait to order keys alphabetically
+- Updated `ResourceModel` to allow filtering by related fields
+- Updated documentation
 
 ### Fixed
 
-- Fixed bug in `ResourceModel`
+- Fixed bugs in `ResourceModel`
+  - Added table aliases to joined tables
+  - Ignore checking uniqueness when value is `null`
+  - ...and others
 
 ## [1.1.2] - 2025.06.18
 

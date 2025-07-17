@@ -369,7 +369,7 @@ abstract class ResourceModel extends OrmModel
     }
 
     /*
-     * $jonied_tables can only be used when a table is only joined one time.
+     * $joined_tables can only be used when a table is only joined one time.
      * If a foreign key table is joined multiple times on the same table,
      * it must be given a unique alias, as it is joined to a different column on the table.
      *
@@ -578,6 +578,7 @@ abstract class ResourceModel extends OrmModel
      * @param string $condition
      * @return void
      * @throws InvalidRequestException
+     * @throws UnexpectedException
      */
     private function filterListFields(Query $query, array $filters, string $condition): void
     {
@@ -595,9 +596,70 @@ abstract class ResourceModel extends OrmModel
 
             foreach ($filter as $field => $val) {
 
+                $join_found = false;
+
+                if (str_contains($field, '.')) {
+
+                    $field_exp = explode('.', $field);
+
+                    if (!isset($this->related_fields[$field_exp[0]])) {
+                        throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $field . ')');
+                    }
+
+                    // Last element is the field- need to check tables
+                    $field_exp_except_last = implode('.', array_slice($field_exp, 0, -1));
+                    $field_exp_column = end($field_exp);
+
+                    foreach ($this->list_joins as $list_join) {
+
+                        if (isset($list_join[$this->table_name . '.' . $field_exp_except_last])) {
+
+                            $table_exp = explode('.', $list_join[$this->table_name . '.' . $field_exp_except_last]);
+                            $table = $table_exp[0];
+                            $field = $table . '.' . $field_exp_column;
+                            $join_found = true;
+
+                            break;
+
+                        }
+
+                    }
+
+                    if ($join_found === false) { // Not yet in the list of joins
+
+                        $rel_model = $this->getRelatedModel($this->related_fields[$field_exp[0]]);
+
+                        $field_exp_count = count($field_exp);
+
+                        if ($field_exp_count == 2) {
+
+                            if (!in_array($field_exp[1], $rel_model->allowed_fields_read)) {
+                                throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $field . ')');
+                            }
+
+                            $rel_alias = $this->getTableAlias($rel_model->getTableName());
+
+                            $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
+                                $this->getTableName() . '.' . $field_exp[0] => $rel_alias . '.' . $rel_model->primary_key
+                            ];
+
+                            $field = $rel_alias . '.' . $field_exp_column;
+                            $join_found = true;
+
+                        }
+
+                        /*
+                         * TODO:
+                         * If $field_exp_count !== 2, filter by a not yet joined table > 1 level
+                         */
+
+                    }
+
+                }
+
                 if (!in_array(strtoupper(ltrim($field, '_')), $conditions)) {
 
-                    if (!in_array($field, $this->allowed_fields_read)) {
+                    if ($join_found === false && !in_array($field, $this->allowed_fields_read)) {
                         throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $field . ')');
                     }
 
@@ -1418,11 +1480,13 @@ abstract class ResourceModel extends OrmModel
 
         if ($this->is_upsert === false) {
 
+            // Only check uniqueness if the field is not null
+
             foreach ($this->unique_fields as $field) {
 
                 if (is_string($field)) {
 
-                    if (isset($fields[$field])) {
+                    if (Arr::get($fields, $field) !== null) {
 
                         if ($this->ormService->db->exists($this->table_name, [
                             $field => $fields[$field]
@@ -1436,8 +1500,19 @@ abstract class ResourceModel extends OrmModel
 
                     if (count(Arr::only($fields, $field)) == count($field)) { // If all unique fields exist
 
-                        if ($this->ormService->db->exists($this->table_name, Arr::only($fields, $field))) {
-                            throw new AlreadyExistsException('Unable to create resource: Unique fields (' . implode(', ', $field) . ') already exists');
+                        $is_null = false;
+
+                        foreach ($field as $f) {
+                            if (Arr::get($fields, $f) === null) {
+                                $is_null = true;
+                            }
+                            break;
+                        }
+
+                        if ($is_null === false) {
+                            if ($this->ormService->db->exists($this->table_name, Arr::only($fields, $field))) {
+                                throw new AlreadyExistsException('Unable to create resource: Unique fields (' . implode(', ', $field) . ') already exists');
+                            }
                         }
 
                     }
@@ -1550,6 +1625,32 @@ abstract class ResourceModel extends OrmModel
     }
 
     /**
+     * Iterate fields to apply query filter to all values.
+     *
+     * @param array $fields
+     * @return array
+     */
+    private function applyQueryFilter(array $fields): array
+    {
+
+        foreach ($fields as $key => $value) {
+
+            if (is_array($value)) {
+
+                $fields[$key] = $this->applyQueryFilter($value);
+
+            } else {
+                $fields[$key] = $this->ormService->filters->doFilter('orm.query.filter', $value);
+            }
+
+
+        }
+
+        return $fields;
+
+    }
+
+    /**
      * List resources.
      *
      * @param QueryParserInterface $parser
@@ -1572,6 +1673,21 @@ abstract class ResourceModel extends OrmModel
 
         $this->selectListFields($query, $this, $this->getListFields($parser));
 
+        /*
+         * Filter
+         */
+
+        /*
+         * Cannot convert the fields to dot notation, since a field may have a dot in the name
+         * when referencing a related field.
+         *
+         * Using applyQueryFilter to keep iterating the array until the value is reached.
+         */
+
+        $fields = $this->applyQueryFilter($parser->getFilter());
+
+        $this->filterListFields($query, Arr::undot($fields), $query::CONDITION_AND);
+
         $joins = $this->sortListJoins($this->list_joins);
 
         foreach ($joins as $table => $cols) {
@@ -1579,22 +1695,6 @@ abstract class ResourceModel extends OrmModel
                 $query->leftJoin($table, $col1, $col2);
             }
         }
-
-        $this->list_joins = []; // Reset
-        $this->joined_tables = []; // Reset
-        $this->join_count = 0; // Reset
-
-        /*
-         * Filter
-         */
-
-        $fields = Arr::dot($parser->getFilter());
-
-        foreach ($fields as $key => $value) {
-            $fields[$key] = $this->ormService->filters->doFilter('orm.query.filter', $value);
-        }
-
-        $this->filterListFields($query, Arr::undot($fields), $query::CONDITION_AND);
 
         /*
          * Trait: SoftDeletes
@@ -1660,6 +1760,14 @@ abstract class ResourceModel extends OrmModel
         $this->paginateList($query, $parser, $limit);
 
         $query = $this->onReading($query);
+
+        /*
+         * Reset
+         */
+
+        $this->list_joins = []; // Reset
+        $this->joined_tables = []; // Reset
+        $this->join_count = 0; // Reset
 
         /*
          * Query
@@ -1863,11 +1971,13 @@ abstract class ResourceModel extends OrmModel
 
         // Unique fields
 
+        // Only check uniqueness if the field is not null
+
         foreach ($this->unique_fields as $field) {
 
             if (is_string($field)) {
 
-                if (isset($fields[$field])) {
+                if (Arr::get($fields, $field) !== null) {
 
                     // Where not this ID
 
@@ -1897,7 +2007,9 @@ abstract class ResourceModel extends OrmModel
                         $uniques = Arr::only(array_merge($previous->read(), $fields), $field);
 
                         foreach ($uniques as $k => $v) {
-                            $query->where($k, Query::OPERATOR_EQUALS, $v);
+                            if ($v !== null) {
+                                $query->where($k, Query::OPERATOR_EQUALS, $v);
+                            }
                         }
 
                     } catch (QueryException) {
