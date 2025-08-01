@@ -14,13 +14,6 @@ trait HasNullableJsonField
 {
 
     /**
-     * Nullable JSON field.
-     *
-     * @return string
-     */
-    abstract protected function getNullableJsonField(): string;
-
-    /**
      * Validate key.
      *
      * @param string $key
@@ -31,7 +24,7 @@ trait HasNullableJsonField
     {
 
         if (!preg_match('/^[a-zA-Z0-9_-]+$/', $key)) {
-            throw new InvalidFieldException('Invalid ' . $this->getNullableJsonField() . ' key: Keys can only contain alphanumeric characters, underscores and dashes');
+            throw new InvalidFieldException('Invalid nullable field: Keys can only contain alphanumeric characters, underscores and dashes');
         }
 
     }
