@@ -22,7 +22,7 @@ Define nullable JSON field array, removing keys with null values.
 
 **Returns:**
 
-- (array)
+- (array|null)
 
 **Throws:**
 
@@ -45,7 +45,7 @@ Update nullable JSON field array, merging updated array with existing and removi
 
 **Returns:**
 
-- (array)
+- (array|null)
 
 **Throws:**
 

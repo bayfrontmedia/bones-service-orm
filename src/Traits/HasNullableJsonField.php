@@ -33,10 +33,10 @@ trait HasNullableJsonField
      * Define nullable JSON field array, removing keys with null values.
      *
      * @param array $array
-     * @return array
+     * @return array|null
      * @throws InvalidFieldException
      */
-    protected function defineNullableJsonField(array $array): array
+    protected function defineNullableJsonField(array $array): ?array
     {
 
         foreach ($array as $k => $v) {
@@ -47,6 +47,10 @@ trait HasNullableJsonField
                 unset($array[$k]);
             }
 
+        }
+
+        if (empty($array)) {
+            return null;
         }
 
         ksort($array);
@@ -64,10 +68,10 @@ trait HasNullableJsonField
      * @param mixed $primary_key
      * @param string $json_field
      * @param array $array
-     * @return array
+     * @return array|null
      * @throws InvalidFieldException
      */
-    protected function updateNullableJsonField(OrmService $ormService, string $table_name, string $primary_key_field, mixed $primary_key, string $json_field, array $array): array
+    protected function updateNullableJsonField(OrmService $ormService, string $table_name, string $primary_key_field, mixed $primary_key, string $json_field, array $array): ?array
     {
 
         $meta = $ormService->db->single("SELECT $json_field FROM $table_name WHERE $primary_key_field = :id", [
@@ -94,6 +98,10 @@ trait HasNullableJsonField
                 unset($meta[$k]);
             }
 
+        }
+
+        if (empty($array)) {
+            return null;
         }
 
         ksort($meta);
