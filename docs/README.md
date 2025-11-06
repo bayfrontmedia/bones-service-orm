@@ -28,3 +28,4 @@ so you can choose to catch exceptions as narrowly or broadly as you like.
 - [OrmService](ormservice.md)
 - [Models](models/README.md)
 - [Traits](traits/README.md)
+- [Utilities](utilities/README.md)

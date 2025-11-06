@@ -13,6 +13,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities
 
+## [1.2.0] - 2025.11.06
+
+### Changed
+
+- Updated `HasNullableJsonField` to not dot arrays
+- Updated `jsonDecode` method of `Castable` trait to order keys alphabetically
+- Updated `ResourceModel` to allow filtering by related fields
+- Updated documentation
+
+### Removed
+
+- Removed `getNullableJsonField` method in `HasNullableJsonField` trait. 
+  More than one field may exist in the same model.
+
+### Fixed
+
+- Fixed bugs in `ResourceModel`
+  - Added table aliases to joined tables
+  - Ignore checking uniqueness when value is `null`
+  - ...and others
+
 ## [1.1.2] - 2025.06.18
 
 ### Fixed

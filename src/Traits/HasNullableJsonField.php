@@ -2,7 +2,6 @@
 
 namespace Bayfront\BonesService\Orm\Traits;
 
-use Bayfront\ArrayHelpers\Arr;
 use Bayfront\BonesService\Orm\Exceptions\InvalidFieldException;
 use Bayfront\BonesService\Orm\OrmService;
 
@@ -15,13 +14,6 @@ trait HasNullableJsonField
 {
 
     /**
-     * Nullable JSON field.
-     *
-     * @return string
-     */
-    abstract protected function getNullableJsonField(): string;
-
-    /**
      * Validate key.
      *
      * @param string $key
@@ -32,7 +24,7 @@ trait HasNullableJsonField
     {
 
         if (!preg_match('/^[a-zA-Z0-9_-]+$/', $key)) {
-            throw new InvalidFieldException('Invalid ' . $this->getNullableJsonField() . ' key: Keys can only contain alphanumeric characters, underscores and dashes');
+            throw new InvalidFieldException('Invalid nullable field: Keys can only contain alphanumeric characters, underscores and dashes');
         }
 
     }
@@ -41,13 +33,11 @@ trait HasNullableJsonField
      * Define nullable JSON field array, removing keys with null values.
      *
      * @param array $array
-     * @return array
+     * @return array|null
      * @throws InvalidFieldException
      */
-    protected function defineNullableJsonField(array $array): array
+    protected function defineNullableJsonField(array $array): ?array
     {
-
-        $array = Arr::dot($array);
 
         foreach ($array as $k => $v) {
 
@@ -59,7 +49,13 @@ trait HasNullableJsonField
 
         }
 
-        return Arr::undot($array);
+        if (empty($array)) {
+            return null;
+        }
+
+        ksort($array);
+
+        return $array;
 
     }
 
@@ -72,10 +68,10 @@ trait HasNullableJsonField
      * @param mixed $primary_key
      * @param string $json_field
      * @param array $array
-     * @return array
+     * @return array|null
      * @throws InvalidFieldException
      */
-    protected function updateNullableJsonField(OrmService $ormService, string $table_name, string $primary_key_field, mixed $primary_key, string $json_field, array $array): array
+    protected function updateNullableJsonField(OrmService $ormService, string $table_name, string $primary_key_field, mixed $primary_key, string $json_field, array $array): ?array
     {
 
         $meta = $ormService->db->single("SELECT $json_field FROM $table_name WHERE $primary_key_field = :id", [
@@ -83,15 +79,15 @@ trait HasNullableJsonField
         ]);
 
         if (is_string($meta)) {
-            $meta_dot = json_decode($meta, true);
+            $existing_meta = json_decode($meta, true);
         } else {
-            $meta_dot = [];
+            $existing_meta = [];
         }
 
-        if (is_array($meta_dot)) { // Checks decode was successful
-            $meta = array_merge(Arr::dot($meta_dot), Arr::dot($array));
+        if (is_array($existing_meta)) { // Checks decode was successful
+            $meta = array_merge($existing_meta, $array);
         } else {
-            $meta = Arr::dot($array);
+            $meta = $array;
         }
 
         foreach ($meta as $k => $v) {
@@ -104,7 +100,13 @@ trait HasNullableJsonField
 
         }
 
-        return Arr::undot($meta);
+        if (empty($array)) {
+            return null;
+        }
+
+        ksort($meta);
+
+        return $meta;
 
     }
 

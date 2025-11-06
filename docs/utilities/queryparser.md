@@ -80,6 +80,9 @@ $query = $users->list(new QueryParser([
 $results = $query->list();
 ```
 
+**Note:** Filters can be applied up to 2 levels deep as long as a field in the same related table is also being selected.
+For example, if selecting the field `contact.name`, a filter can be applied to any field on the `contact` table.
+
 To simplify sending queries via an HTTP request, 
 all single dimensional arrays (`fields`, `sort` and `group`) can be defined as a comma-separated string.
 Also, all multidimensional arrays (`filter` and `aggregate`) can be defined as a JSON-encoded string.

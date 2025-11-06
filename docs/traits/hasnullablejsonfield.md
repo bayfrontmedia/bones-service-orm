@@ -5,40 +5,10 @@ which has a JSON field whose keys are removed by passing a `NULL` value.
 
 Keys can only contain alphanumeric characters, underscores and dashes.
 
-Configuration includes:
-
-- [getNullableJsonField](#getnullablejsonfield)
-
 Methods include:
 
 - [defineNullableJsonField](#definenullablejsonfield)
 - [updateNullableJsonField](#updatenullablejsonfield)
-
-## getNullableJsonField
-
-**Description:**
-
-Nullable JSON field.
-
-**Parameters:**
-
-- None
-
-**Returns:**
-
-- (string)
-
-**Example:**
-
-```php
-/**
- * @inheritDoc
- */
-protected function getNullableJsonField(): string
-{
-    return 'meta';
-}
-```
 
 ## defineNullableJsonField
 
@@ -52,7 +22,7 @@ Define nullable JSON field array, removing keys with null values.
 
 **Returns:**
 
-- (array)
+- (array|null)
 
 **Throws:**
 
@@ -75,7 +45,7 @@ Update nullable JSON field array, merging updated array with existing and removi
 
 **Returns:**
 
-- (array)
+- (array|null)
 
 **Throws:**
 
