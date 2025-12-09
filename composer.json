@@ -30,7 +30,7 @@
     "php": ">=8.0",
     "bayfrontmedia/bones": "^5.3",
     "bayfrontmedia/encryptor": "^2.0",
-    "bayfrontmedia/php-array-helpers": "^2.0",
+    "bayfrontmedia/php-array-helpers": "^2.2",
     "bayfrontmedia/php-sanitize": "^2.1",
     "bayfrontmedia/simple-pdo": "^5.4.2",
     "bayfrontmedia/php-string-helpers": "^2.2",
