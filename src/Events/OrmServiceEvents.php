@@ -32,7 +32,7 @@ class OrmServiceEvents extends EventSubscriber implements EventSubscriberInterfa
 
     public function addConsoleCommands(Application $application): void
     {
-        $application->add(new MakeOrmModel());
+        $application->addCommand(new MakeOrmModel());
     }
 
 }
