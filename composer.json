@@ -33,7 +33,7 @@
     "bayfrontmedia/php-array-helpers": "^2.2",
     "bayfrontmedia/php-sanitize": "^2.1",
     "bayfrontmedia/simple-pdo": "^5.4.2",
-    "bayfrontmedia/php-string-helpers": "^2.2",
+    "bayfrontmedia/php-string-helpers": "^2.3",
     "bayfrontmedia/php-validator": "^4.0"
   },
   "autoload": {
