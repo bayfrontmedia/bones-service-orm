@@ -56,6 +56,8 @@ Methods include:
 - [integer](#integer)
 - [nullify](#nullify)
 - [slug](#slug)
+- [binToUuid](#bintouuid)
+- [uuidToBin](#uuidtobin)
 - [censor](#censor)
 - [date](#date)
 - [datetime](#datetime)
@@ -156,6 +158,34 @@ Cast to lowercase + kebab case (URL-friendly slug).
 **Parameters:**
 
 - `$value` (mixed)
+
+**Returns:**
+
+- `(string)`
+
+## binToUuid
+
+**Description:**
+
+Convert 16 byte binary string to UUID.
+
+**Parameters:**
+
+- `$binary` (string)
+
+**Returns:**
+
+- `(string)`
+
+## uuidToBin
+
+**Description:**
+
+Convert UUID to 16 byte binary string.
+
+**Parameters:**
+
+- `$uuid` (string)
 
 **Returns:**
 

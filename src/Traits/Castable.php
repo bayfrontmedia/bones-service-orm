@@ -121,6 +121,28 @@ trait Castable
     }
 
     /**
+     * Convert 16 byte binary string to UUID.
+     *
+     * @param string $binary
+     * @return string
+     */
+    protected function binToUuid(string $binary): string
+    {
+        return Str::binToUuid($binary);
+    }
+
+    /**
+     * Convert UUID to 16 byte binary string.
+     *
+     * @param string $uuid
+     * @return string
+     */
+    protected function uuidToBin(string $uuid): string
+    {
+        return Str::uuidToBin($uuid);
+    }
+
+    /**
      * Cast non-null and non-empty values to censored string.
      *
      * @param mixed $value
