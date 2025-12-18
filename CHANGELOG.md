@@ -13,11 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities
 
-## [1.3.0] - Upcoming
+## [1.3.0] - 2025.12.18
 
 ### Added
 
 - Added `binToUuid` and `uuidToBin` methods to `Castable` trait
+
+### Fixed
+
+- Fixed bug in `ResourceModel` where `null` values were being compared for unique fields
 
 ## [1.2.1] - 2025.12.09
 

@@ -101,6 +101,8 @@ abstract class ResourceModel extends OrmModel
      *
      * Uniqueness of a single field as a string, or across multiple fields as an array.
      *
+     * *NOTE:** `null` values are always allowed.
+     *
      * @var array
      */
     protected array $unique_fields = [];
@@ -673,7 +675,7 @@ abstract class ResourceModel extends OrmModel
 
                         // $field = field, $operator = operator, $value = value
 
-                        try {
+                        try { // TODO: Check if a binary UUID field
 
                             if (strtoupper(ltrim($condition, '_')) == $query::CONDITION_OR) {
                                 $query->orWhere($field, $operator, $value);
@@ -715,7 +717,7 @@ abstract class ResourceModel extends OrmModel
 
                                 foreach ($definition as $operator => $v) {
 
-                                    try {
+                                    try { // TODO: Check if a binary UUID field
                                         if (strtoupper(ltrim($field, '_')) == $query::CONDITION_OR) {
                                             $query->orWhere($col, $operator, $v);
                                         } else {
@@ -784,6 +786,19 @@ abstract class ResourceModel extends OrmModel
             }
 
             foreach ($search_fields as $field) {
+
+                /*
+                 * TODO: How to search partial and whole value of binary UUID fields?
+                 * Binary fields cannot be searched using LIKE.
+                 * Can check if field is a binary UUID field, and if so, convert the search string
+                 * to binary and update the search clause:
+                 *
+                 * WHERE HEX(id) LIKE CONCAT(UPPER(?), '%')
+                 *
+                 * Or, check if search string is 32 characters and a UUID,
+                 * and if so, convert to binary and search where field value equals binary value,
+                 * in which case, binary UUID fields can only be searched by their entire value.
+                 */
 
                 try {
 
@@ -1009,7 +1024,7 @@ abstract class ResourceModel extends OrmModel
 
         $resource = $this->removeListFields($model, $parser, $resource);
 
-        foreach ($resource as $col => $value) {
+        foreach ($resource as $col => $value) { // TODO: Check if binary UUID field
 
             /*
              * JSON fields
@@ -1390,7 +1405,7 @@ abstract class ResourceModel extends OrmModel
 
         $query = $this->newQuery();
 
-        try {
+        try { // TODO: Check for binary UUID
 
             $query->table($this->table_name)
                 ->select($this->primary_key)
@@ -1527,6 +1542,8 @@ abstract class ResourceModel extends OrmModel
 
         // Create
 
+        // TODO: Check for binary UUID fields
+
         if ($this->is_upsert === false) {
             $create = $this->ormService->db->insert($this->table_name, $fields, false);
         } else {
@@ -1537,6 +1554,10 @@ abstract class ResourceModel extends OrmModel
             throw new UnexpectedException('Unable to create resource');
         }
 
+        /*
+         * TODO: Is $fields[$this->primary_key] already converted to binary if needed?
+         * Probably should not be if passing to find(), since find() will convert as well.
+         */
         $pk = $fields[$this->primary_key] ?? $this->ormService->db->lastInsertId();
 
         $resource = $this->find($pk);
@@ -1661,6 +1682,12 @@ abstract class ResourceModel extends OrmModel
      */
     public function list(QueryParserInterface $parser, bool $list_all = false): OrmCollection
     {
+
+        /*
+         * TODO:
+         * Ensure all of the $this-> methods are handling binary UUID fields as needed.
+         * Probably should not be done here.
+         */
 
         $this->doBegin(__FUNCTION__);
 
@@ -1829,7 +1856,7 @@ abstract class ResourceModel extends OrmModel
 
         }
 
-        try {
+        try { // TODO: Check if primary key field is binary UUID
 
             $query = $this->newQuery();
             $query->table($this->table_name)
@@ -1872,6 +1899,8 @@ abstract class ResourceModel extends OrmModel
         /*
          * Query
          */
+
+        // TODO: Convert binary UUID fields
 
         $start_time = microtime(true);
         $resource = $query->row();
@@ -1973,7 +2002,7 @@ abstract class ResourceModel extends OrmModel
 
         // Only check uniqueness if the field is not null
 
-        foreach ($this->unique_fields as $field) {
+        foreach ($this->unique_fields as $field) { // TODO: Check binary UUID
 
             if (is_string($field)) {
 
@@ -1996,36 +2025,39 @@ abstract class ResourceModel extends OrmModel
 
                 if (!empty(Arr::only($fields, $field))) { // If any exist
 
-                    $query = $this->newQuery();
+                    $uniques = Arr::only(array_merge($previous->read(), $fields), $field);
+                    $uniques = array_filter($uniques, fn($value) => !is_null($value)); // Unique fields not null
 
-                    try {
+                    if (count($uniques) == count($field)) { // If non-null values exist for all unique fields
 
-                        $query->table($this->table_name)
-                            ->select($this->primary_key)
-                            ->where($this->primary_key, Query::OPERATOR_DOES_NOT_EQUAL, $primary_key_id);
+                        $query = $this->newQuery();
 
-                        $uniques = Arr::only(array_merge($previous->read(), $fields), $field);
+                        try {
 
-                        foreach ($uniques as $k => $v) {
-                            if ($v !== null) {
+                            $query->table($this->table_name)
+                                ->select($this->primary_key)
+                                ->where($this->primary_key, Query::OPERATOR_DOES_NOT_EQUAL, $primary_key_id);
+
+                            foreach ($uniques as $k => $v) {
                                 $query->where($k, Query::OPERATOR_EQUALS, $v);
                             }
+
+                        } catch (QueryException) {
+                            throw new UnexpectedException('Unable to update resource: Invalid operator when checking unique fields');
                         }
 
-                    } catch (QueryException) {
-                        throw new UnexpectedException('Unable to update resource: Invalid operator when checking unique fields');
-                    }
+                        /*
+                         * Query
+                         */
 
-                    /*
-                     * Query
-                     */
+                        $start_time = microtime(true);
+                        $get = $query->get();
+                        $this->ormService->db->setQueryTime($this->ormService->db->getCurrentConnectionName(), microtime(true) - $start_time);
 
-                    $start_time = microtime(true);
-                    $get = $query->get();
-                    $this->ormService->db->setQueryTime($this->ormService->db->getCurrentConnectionName(), microtime(true) - $start_time);
+                        if (count($get) > 0) {
+                            throw new AlreadyExistsException('Unable to update resource: Unique fields (' . implode(', ', $field) . ') already exists');
+                        }
 
-                    if (count($get) > 0) {
-                        throw new AlreadyExistsException('Unable to update resource: Unique fields (' . implode(', ', $field) . ') already exists');
                     }
 
                 }
@@ -2113,6 +2145,8 @@ abstract class ResourceModel extends OrmModel
         }
 
         $this->onDeleting($resource);
+
+        // TODO: Check if $primary_key_id is binary UUID
 
         // Trait: SoftDeletes
 

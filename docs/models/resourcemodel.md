@@ -116,6 +116,8 @@ The database is queried once for each key.
 
 Uniqueness of a single field as a string, or across multiple fields as an array.
 
+**NOTE:** `null` values are always allowed.
+
 - Visibility: `protected`
 - Type: `array`
 
