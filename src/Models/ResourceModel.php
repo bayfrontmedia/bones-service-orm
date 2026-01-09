@@ -1497,7 +1497,7 @@ abstract class ResourceModel extends OrmModel
 
             // Only check uniqueness if the field is not null
 
-            foreach ($this->unique_fields as $field) {
+            foreach ($this->unique_fields as $field) { // TODO: Check binary UUID
 
                 if (is_string($field)) {
 
@@ -1520,8 +1520,8 @@ abstract class ResourceModel extends OrmModel
                         foreach ($field as $f) {
                             if (Arr::get($fields, $f) === null) {
                                 $is_null = true;
+                                break;
                             }
-                            break;
                         }
 
                         if ($is_null === false) {
