@@ -107,6 +107,15 @@ class _model_name_ extends ResourceModel
     protected array $search_fields = [];
 
     /**
+     * Fields which are stored as binary UUID.
+     * These fields will be converted from UUID to binary when writing,
+     * and from binary to UUID when reading.
+     *
+     * @var array
+     */
+    protected array $binary_fields = [];
+
+    /**
      * Maximum related field depth allowed to query.
      * If set, this value overrides the ORM service config value.
      *

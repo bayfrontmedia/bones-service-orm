@@ -19,6 +19,7 @@ Configuration includes:
 - [unique_fields](#unique_fields)
 - [allowed_fields_read](#allowed_fields_read)
 - [search_fields](#search_fields)
+- [binary_fields](#binary_fields)
 - [max_related_depth](#max_related_depth)
 - [default_limit](#default_limit)
 - [max_limit](#max_limit)
@@ -149,6 +150,26 @@ When empty, all readable fields will be used.
 
 - Visibility: `protected`
 - Type: `array`
+
+## binary_fields
+
+Fields which are stored as binary UUID.
+These fields will be converted from UUID to binary when writing,
+and from binary to UUID when reading.
+
+Binary fields are excluded from search queries as they cannot be searched using LIKE.
+
+- Visibility: `protected`
+- Type: `array`
+
+**Example:**
+
+```php
+protected array $binary_fields = [
+    'id',
+    'tenant_id'
+];
+```
 
 ## max_related_depth
 

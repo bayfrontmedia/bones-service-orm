@@ -8,6 +8,7 @@ use Bayfront\BonesService\Orm\Exceptions\UnexpectedException;
 use Bayfront\BonesService\Orm\Models\ResourceModel;
 use Bayfront\BonesService\Orm\OrmResource;
 use Bayfront\SimplePdo\Exceptions\QueryException;
+use Bayfront\StringHelpers\Str;
 
 /**
  * Soft-deletable resources.
@@ -106,13 +107,19 @@ trait SoftDeletes
 
         $deleted_at_field = $this->getDeletedAtField();
 
+        // Convert primary key to binary for binary fields
+        $pk_for_update = $primary_key_id;
+        if (in_array($this->primary_key, $this->binary_fields) && is_string($pk_for_update)) {
+            $pk_for_update = Str::uuidToBin($pk_for_update);
+        }
+
         /*
          * Must bypass the field validations used in the update() method
          * in order to modify the $deleted_at_field.
          */
 
         $this->ormService->db->query('UPDATE ' . $this->table_name . ' SET ' . $deleted_at_field . ' = NULL WHERE ' . $this->primary_key . ' = :primaryKey', [
-            'primaryKey' => $primary_key_id
+            'primaryKey' => $pk_for_update
         ]);
 
         if ($this->ormService->db->rowCount() > 0) {
@@ -167,8 +174,14 @@ trait SoftDeletes
 
         $this->onDeleting($resource);
 
+        // Convert primary key to binary for binary fields
+        $pk_for_delete = $primary_key_id;
+        if (in_array($this->primary_key, $this->binary_fields) && is_string($pk_for_delete)) {
+            $pk_for_delete = Str::uuidToBin($pk_for_delete);
+        }
+
         $deleted = $this->ormService->db->delete($this->table_name, [
-            $this->primary_key => $primary_key_id
+            $this->primary_key => $pk_for_delete
         ]);
 
         if ($deleted) { // Ensure deleted from db
