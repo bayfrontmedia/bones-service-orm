@@ -8,7 +8,6 @@ use Bayfront\BonesService\Orm\Exceptions\UnexpectedException;
 use Bayfront\BonesService\Orm\Models\ResourceModel;
 use Bayfront\BonesService\Orm\OrmResource;
 use Bayfront\SimplePdo\Exceptions\QueryException;
-use Bayfront\StringHelpers\Str;
 
 /**
  * Soft-deletable resources.
@@ -108,10 +107,7 @@ trait SoftDeletes
         $deleted_at_field = $this->getDeletedAtField();
 
         // Convert primary key to binary for binary fields
-        $pk_for_update = $primary_key_id;
-        if (in_array($this->primary_key, $this->binary_fields) && is_string($pk_for_update)) {
-            $pk_for_update = Str::uuidToBin($pk_for_update);
-        }
+        $pk_for_update = $this->primaryKeyToBinary($primary_key_id);
 
         /*
          * Must bypass the field validations used in the update() method
@@ -175,10 +171,7 @@ trait SoftDeletes
         $this->onDeleting($resource);
 
         // Convert primary key to binary for binary fields
-        $pk_for_delete = $primary_key_id;
-        if (in_array($this->primary_key, $this->binary_fields) && is_string($pk_for_delete)) {
-            $pk_for_delete = Str::uuidToBin($pk_for_delete);
-        }
+        $pk_for_delete = $this->primaryKeyToBinary($primary_key_id);
 
         $deleted = $this->ormService->db->delete($this->table_name, [
             $this->primary_key => $pk_for_delete

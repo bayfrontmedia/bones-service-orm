@@ -1201,7 +1201,7 @@ abstract class ResourceModel extends OrmModel
      * @param mixed $primary_key_id
      * @return mixed
      */
-    private function primaryKeyToBinary(mixed $primary_key_id): mixed
+    protected function primaryKeyToBinary(mixed $primary_key_id): mixed
     {
         if (in_array($this->primary_key, $this->binary_fields) && is_string($primary_key_id)) {
             return Str::uuidToBin($primary_key_id);
