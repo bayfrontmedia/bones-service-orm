@@ -406,7 +406,7 @@ abstract class ResourceModel extends OrmModel
         }
 
         $related_field = array_shift($field_parts);
-        $column_name = end($field_parts);
+        $column_name = $field_parts[count($field_parts) - 1];
 
         // Check if the related field exists in this model
         if (!isset($model->related_fields[$related_field])) {
@@ -428,7 +428,7 @@ abstract class ResourceModel extends OrmModel
         ];
 
         // If we're at the final field level (column_name is the actual column)
-        if (count($field_parts) == 1) {
+        if (count($field_parts) === 1) {
             // Verify the column is readable
             if (!in_array($column_name, $rel_model->allowed_fields_read)) {
                 throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $column_name . ')');
