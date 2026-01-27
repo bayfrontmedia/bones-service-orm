@@ -426,8 +426,10 @@ abstract class ResourceModel extends OrmModel
 
                                 $rel_alias = $this->getTableAlias($rel_model->getTableName());
 
+                                $join_from_table = is_string($alias) ? $alias : $model->getTableName();
+
                                 $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
-                                    $model->getTableName() . '.' . $allowed => $rel_alias . '.' . $rel_model->primary_key
+                                    $join_from_table . '.' . $allowed => $rel_alias . '.' . $rel_model->primary_key
                                 ];
 
                                 // Do not reuse alias
@@ -467,8 +469,10 @@ abstract class ResourceModel extends OrmModel
 
                         $rel_alias = $this->getTableAlias($rel_model->getTableName());
 
+                        $join_from_table = is_string($alias) ? $alias : $model->getTableName();
+
                         $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
-                            $model->getTableName() . '.' . $field_exp[0] => $rel_alias . '.' . $rel_model->primary_key
+                            $join_from_table . '.' . $field_exp[0] => $rel_alias . '.' . $rel_model->primary_key
                         ];
 
                         // Do not reuse alias
