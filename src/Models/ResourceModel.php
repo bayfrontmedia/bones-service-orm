@@ -2064,12 +2064,21 @@ abstract class ResourceModel extends OrmModel
 
                 if (Arr::get($fields, $field) !== null) {
 
-                    // Where not this ID
+                    // Where not this ID - use query builder for consistency
+                    $query = $this->newQuery();
 
-                    $count = $this->ormService->db->single("SELECT COUNT(*) FROM $this->table_name WHERE $field = :field AND $this->primary_key != :primaryKey", [
-                        'field' => $fields[$field],
-                        'primaryKey' => $primary_key_id
-                    ]);
+                    try {
+                        $query->table($this->table_name)
+                            ->select($this->primary_key)
+                            ->where($field, Query::OPERATOR_EQUALS, $fields[$field])
+                            ->where($this->primary_key, Query::OPERATOR_DOES_NOT_EQUAL, $primary_key_id);
+                    } catch (QueryException) {
+                        throw new UnexpectedException('Unable to update resource: Invalid operator when checking unique field');
+                    }
+
+                    $start_time = microtime(true);
+                    $count = $query->aggregate(Query::AGGREGATE_COUNT);
+                    $this->ormService->db->setQueryTime($this->ormService->db->getCurrentConnectionName(), microtime(true) - $start_time);
 
                     if ($count > 0) {
                         throw new AlreadyExistsException('Unable to update resource: Unique field (' . $field . ') already exists');
@@ -2103,14 +2112,14 @@ abstract class ResourceModel extends OrmModel
                         }
 
                         /*
-                         * Query
+                         * Query - use aggregate COUNT for efficiency instead of fetching all rows
                          */
 
                         $start_time = microtime(true);
-                        $get = $query->get();
+                        $count = $query->aggregate(Query::AGGREGATE_COUNT);
                         $this->ormService->db->setQueryTime($this->ormService->db->getCurrentConnectionName(), microtime(true) - $start_time);
 
-                        if (count($get) > 0) {
+                        if ($count > 0) {
                             throw new AlreadyExistsException('Unable to update resource: Unique fields (' . implode(', ', $field) . ') already exists');
                         }
 
