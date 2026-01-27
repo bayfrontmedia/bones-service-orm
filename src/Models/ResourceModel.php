@@ -390,6 +390,57 @@ abstract class ResourceModel extends OrmModel
     }
 
     /**
+     * Create nested joins for filter fields > 1 level deep.
+     *
+     * @param array $field_parts Array of field path parts (e.g., ['tenant', 'owner', 'name'])
+     * @param ResourceModel $model Current model to traverse from
+     * @param string $parent_alias Alias of the parent table (or table name for first level)
+     * @return string|null The final field reference (alias.column) or null if invalid
+     * @throws InvalidRequestException
+     * @throws UnexpectedException
+     */
+    private function createNestedFilterJoins(array $field_parts, ResourceModel $model, string $parent_alias): ?string
+    {
+        if (count($field_parts) < 2) {
+            return null;
+        }
+
+        $related_field = array_shift($field_parts);
+        $column_name = end($field_parts);
+
+        // Check if the related field exists in this model
+        if (!isset($model->related_fields[$related_field])) {
+            throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $related_field . ')');
+        }
+
+        // Verify the related field is readable
+        if (!in_array($related_field, $model->allowed_fields_read)) {
+            throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $related_field . ')');
+        }
+
+        $rel_model = $this->getRelatedModel($model->related_fields[$related_field]);
+
+        // Create join for this level
+        $rel_alias = $this->getTableAlias($rel_model->getTableName());
+
+        $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
+            $parent_alias . '.' . $related_field => $rel_alias . '.' . $rel_model->primary_key
+        ];
+
+        // If we're at the final field level (column_name is the actual column)
+        if (count($field_parts) == 1) {
+            // Verify the column is readable
+            if (!in_array($column_name, $rel_model->allowed_fields_read)) {
+                throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $column_name . ')');
+            }
+            return $rel_alias . '.' . $column_name;
+        }
+
+        // Recursively process deeper levels
+        return $this->createNestedFilterJoins($field_parts, $rel_model, $rel_alias);
+    }
+
+    /**
      * Add field(s) to list query.
      *
      * @param Query $query
@@ -648,12 +699,17 @@ abstract class ResourceModel extends OrmModel
                             $field = $rel_alias . '.' . $field_exp_column;
                             $join_found = true;
 
-                        }
+                        } else if ($field_exp_count > 2) {
 
-                        /*
-                         * TODO:
-                         * If $field_exp_count !== 2, filter by a not yet joined table > 1 level
-                         */
+                            // Handle nested filters > 1 level deep
+                            $nested_field = $this->createNestedFilterJoins($field_exp, $this, $this->getTableName());
+
+                            if ($nested_field !== null) {
+                                $field = $nested_field;
+                                $join_found = true;
+                            }
+
+                        }
 
                     }
 
