@@ -78,6 +78,15 @@ class _model_name_ extends ResourceModel
     protected array $allowed_fields_write = [];
 
     /**
+     * Fields which are stored as binary UUID.
+     * These fields will be converted from UUID to binary when writing,
+     * and from binary to UUID when reading.
+     *
+     * @var array
+     */
+    protected array $binary_fields = [];
+
+    /**
      * Unique fields whose values are checked on create/update.
      * The database is queried once for each key.
      *
@@ -105,15 +114,6 @@ class _model_name_ extends ResourceModel
      * @var array
      */
     protected array $search_fields = [];
-
-    /**
-     * Fields which are stored as binary UUID.
-     * These fields will be converted from UUID to binary when writing,
-     * and from binary to UUID when reading.
-     *
-     * @var array
-     */
-    protected array $binary_fields = [];
 
     /**
      * Maximum related field depth allowed to query.
