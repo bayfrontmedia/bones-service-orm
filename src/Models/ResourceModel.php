@@ -443,7 +443,7 @@ abstract class ResourceModel extends OrmModel
 
                         } else {
 
-                            if ($model::class === $this::class) {
+                            if ($model::class === $this::class && !is_string($alias)) {
                                 $query->select([$allowed]);
                             } else { // Prefix
 
@@ -492,7 +492,7 @@ abstract class ResourceModel extends OrmModel
 
                 if ($field == '*') {
 
-                    if ($model::class === $this::class) { // No prefix needed
+                    if ($model::class === $this::class && !is_string($alias)) { // No prefix needed
                         $query->select($model->allowed_fields_read);
                     } else { // Prefix
 
@@ -527,7 +527,7 @@ abstract class ResourceModel extends OrmModel
                         throw new InvalidRequestException('Unable to list resource: Invalid field (' . $field . ')');
                     }
 
-                    if ($model::class === $this::class) { // No prefix needed
+                    if ($model::class === $this::class && !is_string($alias)) { // No prefix needed
                         $query->select($field);
                     } else {
 
@@ -545,7 +545,7 @@ abstract class ResourceModel extends OrmModel
 
                 } else if (in_array($field, $model->allowed_fields_read)) {
 
-                    if ($model::class === $this::class) { // No prefix needed
+                    if ($model::class === $this::class && !is_string($alias)) { // No prefix needed
                         $query->select($field);
                     } else {
 
