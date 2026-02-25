@@ -426,6 +426,7 @@ abstract class ResourceModel extends OrmModel
 
                                 $rel_alias = $this->getTableAlias($rel_model->getTableName());
 
+                                // Allow recursive joins
                                 $join_from_table = is_string($alias) ? $alias : $model->getTableName();
 
                                 $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
@@ -469,6 +470,7 @@ abstract class ResourceModel extends OrmModel
 
                         $rel_alias = $this->getTableAlias($rel_model->getTableName());
 
+                        // Allow recursive joins
                         $join_from_table = is_string($alias) ? $alias : $model->getTableName();
 
                         $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
@@ -1719,7 +1721,7 @@ abstract class ResourceModel extends OrmModel
 
         $this->filterListFields($query, Arr::undot($fields), $query::CONDITION_AND);
 
-        $this->sorted_join_tables[$this->table_name] = $this->table_name;
+        $this->sorted_join_tables[$this->table_name] = $this->table_name; // Pre-initialize base table for recursive join
 
         $joins = $this->sortListJoins($this->list_joins);
 

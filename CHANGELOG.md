@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities
 
+## [1.4.0] - 2026.02.24
+
+### Added
+
+- Added support for recursive joins in `ResourceModel`
+
 ## [1.3.1] - 2026.01.08
 
 ### Fixed
