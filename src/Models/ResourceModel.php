@@ -1719,6 +1719,8 @@ abstract class ResourceModel extends OrmModel
 
         $this->filterListFields($query, Arr::undot($fields), $query::CONDITION_AND);
 
+        $this->sorted_join_tables[$this->table_name] = $this->table_name;
+
         $joins = $this->sortListJoins($this->list_joins);
 
         foreach ($joins as $table => $cols) {
