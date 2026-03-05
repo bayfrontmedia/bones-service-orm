@@ -1868,12 +1868,6 @@ abstract class ResourceModel extends OrmModel
     public function list(QueryParserInterface $parser, bool $list_all = false): OrmCollection
     {
 
-        /*
-         * TODO:
-         * Ensure all of the $this-> methods are handling binary UUID fields as needed.
-         * Probably should not be done here.
-         */
-
         $this->doBegin(__FUNCTION__);
 
         $query = $this->newQuery();
