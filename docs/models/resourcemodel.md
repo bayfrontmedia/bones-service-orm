@@ -16,6 +16,7 @@ Configuration includes:
 - [related_fields](#related_fields)
 - [required_fields](#required_fields)
 - [allowed_fields_write](#allowed_fields_write)
+- [binary_fields](#binary_fields)
 - [unique_fields](#unique_fields)
 - [allowed_fields_read](#allowed_fields_read)
 - [search_fields](#search_fields)
@@ -106,6 +107,25 @@ See [Validator](https://github.com/bayfrontmedia/php-validator/blob/master/docs/
 protected array $allowed_fields_write = [
     'name' => 'isString|lengthLessThan:255',
     'description' => 'isString|lengthLessThan:255',
+];
+```
+
+## binary_fields
+
+Fields which are stored as binary UUID.
+These fields will be converted from UUID to binary when writing, and from binary to UUID when reading.
+
+Binary fields are excluded from search queries as they cannot be searched using `LIKE`.
+
+- Visibility: `protected`
+- Type: `array`
+
+**Example:**
+
+```php
+protected array $binary_fields = [
+    'id',
+    'tenant_id'
 ];
 ```
 

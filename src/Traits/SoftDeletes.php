@@ -106,13 +106,17 @@ trait SoftDeletes
 
         $deleted_at_field = $this->getDeletedAtField();
 
+        // Convert primary key to binary for binary fields
+
+        $pk_for_update = $this->primaryKeyToBinary($primary_key_id);
+
         /*
          * Must bypass the field validations used in the update() method
          * in order to modify the $deleted_at_field.
          */
 
         $this->ormService->db->query('UPDATE ' . $this->table_name . ' SET ' . $deleted_at_field . ' = NULL WHERE ' . $this->primary_key . ' = :primaryKey', [
-            'primaryKey' => $primary_key_id
+            'primaryKey' => $pk_for_update
         ]);
 
         if ($this->ormService->db->rowCount() > 0) {
@@ -167,8 +171,12 @@ trait SoftDeletes
 
         $this->onDeleting($resource);
 
+        // Convert primary key to binary for binary fields
+
+        $pk_for_delete = $this->primaryKeyToBinary($primary_key_id);
+
         $deleted = $this->ormService->db->delete($this->table_name, [
-            $this->primary_key => $primary_key_id
+            $this->primary_key => $pk_for_delete
         ]);
 
         if ($deleted) { // Ensure deleted from db
