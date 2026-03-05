@@ -53,12 +53,9 @@ See [select](https://github.com/bayfrontmedia/simple-pdo/blob/master/docs/query-
 
 Get fields to filter by.
 
-If filtering by a related field more than 1 level deep, i.e. `owner.name`, at least one field from the related table 
-must be selected.
-For example, to filter by `tenant.owner.name`, be sure to select at least one field, 
-such as `tenant.owner.id` or `tenant.owner.name`.
-The reason being that the necessary `JOIN` aliases needed in the database query can be made 
-when selecting fields at any level, but can only be made up to 1 level deep when filtering.
+Filters can be applied at any level of related fields, including deeply nested relationships up to the [max_related_depth](../models/resourcemodel.md#max_related_depth). 
+For example, you can filter by `tenant.owner.name` without needing to select any fields from those related tables.
+The necessary `JOIN` aliases are automatically created when filtering by related fields at any depth.
 
 See [where](https://github.com/bayfrontmedia/simple-pdo/blob/master/docs/query-builder.md#where) and [startGroup](https://github.com/bayfrontmedia/simple-pdo/blob/master/docs/query-builder.md#startgroup).
 
