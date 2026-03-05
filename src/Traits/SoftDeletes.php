@@ -107,6 +107,7 @@ trait SoftDeletes
         $deleted_at_field = $this->getDeletedAtField();
 
         // Convert primary key to binary for binary fields
+
         $pk_for_update = $this->primaryKeyToBinary($primary_key_id);
 
         /*
@@ -171,6 +172,7 @@ trait SoftDeletes
         $this->onDeleting($resource);
 
         // Convert primary key to binary for binary fields
+
         $pk_for_delete = $this->primaryKeyToBinary($primary_key_id);
 
         $deleted = $this->ormService->db->delete($this->table_name, [

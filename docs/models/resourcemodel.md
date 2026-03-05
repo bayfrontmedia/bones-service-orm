@@ -113,10 +113,9 @@ protected array $allowed_fields_write = [
 ## binary_fields
 
 Fields which are stored as binary UUID.
-These fields will be converted from UUID to binary when writing,
-and from binary to UUID when reading.
+These fields will be converted from UUID to binary when writing, and from binary to UUID when reading.
 
-Binary fields are excluded from search queries as they cannot be searched using LIKE.
+Binary fields are excluded from search queries as they cannot be searched using `LIKE`.
 
 - Visibility: `protected`
 - Type: `array`

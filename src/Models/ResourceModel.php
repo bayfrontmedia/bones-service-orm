@@ -686,6 +686,7 @@ abstract class ResourceModel extends OrmModel
                         // $field = field, $operator = operator, $value = value
 
                         // Convert UUID to binary for binary fields
+
                         if (in_array($field, $this->binary_fields) && is_string($value)) {
                             $value = Str::uuidToBin($value);
                         }
@@ -733,11 +734,13 @@ abstract class ResourceModel extends OrmModel
                                 foreach ($definition as $operator => $v) {
 
                                     // Convert UUID to binary for binary fields
+
                                     if (in_array($col, $this->binary_fields) && is_string($v)) {
                                         $v = Str::uuidToBin($v);
                                     }
 
                                     try {
+
                                         if (strtoupper(ltrim($field, '_')) == $query::CONDITION_OR) {
                                             $query->orWhere($col, $operator, $v);
                                         } else {
@@ -808,6 +811,7 @@ abstract class ResourceModel extends OrmModel
             foreach ($search_fields as $field) {
 
                 // Skip binary UUID fields as they cannot be searched using LIKE
+
                 if (in_array($field, $this->binary_fields)) {
                     continue;
                 }
@@ -1037,6 +1041,7 @@ abstract class ResourceModel extends OrmModel
         $resource = $this->removeListFields($model, $parser, $resource);
 
         // Convert binary UUID fields to UUID strings
+
         $resource = $model->binaryToUuidFields($resource);
 
         foreach ($resource as $col => $value) {
@@ -1171,12 +1176,17 @@ abstract class ResourceModel extends OrmModel
      */
     private function uuidToBinaryFields(array $fields): array
     {
+
         foreach ($this->binary_fields as $field) {
+
             if (isset($fields[$field]) && is_string($fields[$field])) {
                 $fields[$field] = Str::uuidToBin($fields[$field]);
             }
+
         }
+
         return $fields;
+
     }
 
     /**
@@ -1187,12 +1197,17 @@ abstract class ResourceModel extends OrmModel
      */
     private function binaryToUuidFields(array $fields): array
     {
+
         foreach ($this->binary_fields as $field) {
+
             if (isset($fields[$field]) && is_string($fields[$field])) {
                 $fields[$field] = Str::binToUuid($fields[$field]);
             }
+
         }
+
         return $fields;
+
     }
 
     /**
@@ -1471,6 +1486,7 @@ abstract class ResourceModel extends OrmModel
         $this->doBegin(__FUNCTION__);
 
         // Convert primary key to binary if it's a binary field
+
         $primary_key_id = $this->primaryKeyToBinary($primary_key_id);
 
         $query = $this->newQuery();
@@ -1574,7 +1590,9 @@ abstract class ResourceModel extends OrmModel
                     if (Arr::get($fields, $field) !== null) {
 
                         // Convert UUID to binary for binary fields when checking uniqueness
+
                         $field_value = $fields[$field];
+
                         if (in_array($field, $this->binary_fields) && is_string($field_value)) {
                             $field_value = Str::uuidToBin($field_value);
                         }
@@ -1601,16 +1619,23 @@ abstract class ResourceModel extends OrmModel
                         }
 
                         if ($is_null === false) {
+
                             // Convert UUID to binary for binary fields when checking uniqueness
+
                             $unique_check_fields = Arr::only($fields, $field);
+
                             foreach ($unique_check_fields as $k => $v) {
+
                                 if (in_array($k, $this->binary_fields) && is_string($v)) {
                                     $unique_check_fields[$k] = Str::uuidToBin($v);
                                 }
+
                             }
+
                             if ($this->ormService->db->exists($this->table_name, $unique_check_fields)) {
                                 throw new AlreadyExistsException('Unable to create resource: Unique fields (' . implode(', ', $field) . ') already exists');
                             }
+
                         }
 
                     }
@@ -1624,9 +1649,11 @@ abstract class ResourceModel extends OrmModel
         $fields = $this->onWriting($this->onCreating($fields));
 
         // Save original primary key before converting to binary (for find())
+
         $original_pk = $fields[$this->primary_key] ?? null;
 
         // Convert UUID fields to binary before inserting
+
         $fields = $this->uuidToBinaryFields($fields);
 
         // Create
@@ -1642,6 +1669,7 @@ abstract class ResourceModel extends OrmModel
         }
 
         // Use original (non-binary) primary key for find()
+
         $pk = $original_pk ?? $this->ormService->db->lastInsertId();
 
         $resource = $this->find($pk);
@@ -1941,6 +1969,7 @@ abstract class ResourceModel extends OrmModel
         }
 
         // Convert primary key to binary if it's a binary field
+
         $primary_key_id = $this->primaryKeyToBinary($primary_key_id);
 
         try {
@@ -1996,6 +2025,7 @@ abstract class ResourceModel extends OrmModel
         }
 
         // Convert binary UUID fields to UUID strings
+
         $resource = $this->binaryToUuidFields($resource);
 
         $resource = $this->onRead($resource);
@@ -2097,13 +2127,17 @@ abstract class ResourceModel extends OrmModel
                 if (Arr::get($fields, $field) !== null) {
 
                     // Convert UUID to binary for binary fields when checking uniqueness
+
                     $field_value = $fields[$field];
+
                     if (in_array($field, $this->binary_fields) && is_string($field_value)) {
                         $field_value = Str::uuidToBin($field_value);
                     }
 
                     // Convert primary key to binary for binary fields when checking uniqueness
+
                     $pk_value = $primary_key_id;
+
                     if (in_array($this->primary_key, $this->binary_fields) && is_string($pk_value)) {
                         $pk_value = Str::uuidToBin($pk_value);
                     }
@@ -2131,7 +2165,9 @@ abstract class ResourceModel extends OrmModel
                     if (count($uniques) == count($field)) { // If non-null values exist for all unique fields
 
                         // Convert primary key to binary for binary fields
+
                         $pk_value = $primary_key_id;
+
                         if (in_array($this->primary_key, $this->binary_fields) && is_string($pk_value)) {
                             $pk_value = Str::uuidToBin($pk_value);
                         }
@@ -2145,11 +2181,15 @@ abstract class ResourceModel extends OrmModel
                                 ->where($this->primary_key, Query::OPERATOR_DOES_NOT_EQUAL, $pk_value);
 
                             foreach ($uniques as $k => $v) {
+
                                 // Convert UUID to binary for binary fields when checking uniqueness
+
                                 if (in_array($k, $this->binary_fields) && is_string($v)) {
                                     $v = Str::uuidToBin($v);
                                 }
+
                                 $query->where($k, Query::OPERATOR_EQUALS, $v);
+
                             }
 
                         } catch (QueryException) {
@@ -2179,9 +2219,11 @@ abstract class ResourceModel extends OrmModel
         $fields = $this->onWriting($this->onUpdating($previous, $fields));
 
         // Convert UUID fields to binary before updating
+
         $fields = $this->uuidToBinaryFields($fields);
 
         // Convert primary key to binary for binary fields
+
         $pk_for_update = $this->primaryKeyToBinary($primary_key_id);
 
         // Update
@@ -2263,6 +2305,7 @@ abstract class ResourceModel extends OrmModel
         $this->onDeleting($resource);
 
         // Convert primary key to binary for binary fields
+
         $pk_for_delete = $this->primaryKeyToBinary($primary_key_id);
 
         // Trait: SoftDeletes
