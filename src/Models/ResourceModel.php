@@ -488,8 +488,11 @@ abstract class ResourceModel extends OrmModel
 
                                 $rel_alias = $this->getTableAlias($rel_model->getTableName());
 
+                                // Allow recursive joins
+                                $join_from_table = is_string($alias) ? $alias : $model->getTableName();
+
                                 $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
-                                    $model->getTableName() . '.' . $allowed => $rel_alias . '.' . $rel_model->primary_key
+                                    $join_from_table . '.' . $allowed => $rel_alias . '.' . $rel_model->primary_key
                                 ];
 
                                 // Do not reuse alias
@@ -503,7 +506,7 @@ abstract class ResourceModel extends OrmModel
 
                         } else {
 
-                            if ($model::class === $this::class) {
+                            if ($model::class === $this::class && !is_string($alias)) {
                                 $query->select([$allowed]);
                             } else { // Prefix
 
@@ -529,8 +532,11 @@ abstract class ResourceModel extends OrmModel
 
                         $rel_alias = $this->getTableAlias($rel_model->getTableName());
 
+                        // Allow recursive joins
+                        $join_from_table = is_string($alias) ? $alias : $model->getTableName();
+
                         $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
-                            $model->getTableName() . '.' . $field_exp[0] => $rel_alias . '.' . $rel_model->primary_key
+                            $join_from_table . '.' . $field_exp[0] => $rel_alias . '.' . $rel_model->primary_key
                         ];
 
                         // Do not reuse alias
@@ -550,7 +556,7 @@ abstract class ResourceModel extends OrmModel
 
                 if ($field == '*') {
 
-                    if ($model::class === $this::class) { // No prefix needed
+                    if ($model::class === $this::class && !is_string($alias)) { // No prefix needed
                         $query->select($model->allowed_fields_read);
                     } else { // Prefix
 
@@ -585,7 +591,7 @@ abstract class ResourceModel extends OrmModel
                         throw new InvalidRequestException('Unable to list resource: Invalid field (' . $field . ')');
                     }
 
-                    if ($model::class === $this::class) { // No prefix needed
+                    if ($model::class === $this::class && !is_string($alias)) { // No prefix needed
                         $query->select($field);
                     } else {
 
@@ -603,7 +609,7 @@ abstract class ResourceModel extends OrmModel
 
                 } else if (in_array($field, $model->allowed_fields_read)) {
 
-                    if ($model::class === $this::class) { // No prefix needed
+                    if ($model::class === $this::class && !is_string($alias)) { // No prefix needed
                         $query->select($field);
                     } else {
 
@@ -1781,6 +1787,8 @@ abstract class ResourceModel extends OrmModel
         $fields = $this->applyQueryFilter($parser->getFilter());
 
         $this->filterListFields($query, Arr::undot($fields), $query::CONDITION_AND);
+
+        $this->sorted_join_tables[$this->table_name] = $this->table_name; // Pre-initialize base table for recursive join
 
         $joins = $this->sortListJoins($this->list_joins);
 
