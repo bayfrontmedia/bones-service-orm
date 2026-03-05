@@ -53,7 +53,7 @@ See [select](https://github.com/bayfrontmedia/simple-pdo/blob/master/docs/query-
 
 Get fields to filter by.
 
-Filters can be applied at any level of related fields, including deeply nested relationships. 
+Filters can be applied at any level of related fields, including deeply nested relationships up to the [max_related_depth](../models/resourcemodel.md#max_related_depth). 
 For example, you can filter by `tenant.owner.name` without needing to select any fields from those related tables.
 The necessary `JOIN` aliases are automatically created when filtering by related fields at any depth.
 

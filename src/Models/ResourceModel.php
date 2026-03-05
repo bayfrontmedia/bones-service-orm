@@ -390,7 +390,7 @@ abstract class ResourceModel extends OrmModel
     }
 
     /**
-     * Create nested joins for filter fields > 1 level deep.
+     * Create nested joins for filter fields > 1 level deep up to the max_related_depth.
      *
      * @param array $field_parts Array of field path parts (e.g., ['tenant', 'owner', 'name'])
      * @param ResourceModel $model Current model to traverse from
@@ -401,19 +401,24 @@ abstract class ResourceModel extends OrmModel
      */
     private function createNestedFilterJoins(array $field_parts, ResourceModel $model, string $parent_alias): ?string
     {
+
         if (count($field_parts) < 2) {
             return null;
+        } else if (count($field_parts) > $this->max_related_depth) {
+            throw new InvalidRequestException('Unable to list resource: Request exceeds maximum related filter depth (' . $this->max_related_depth . ')');
         }
 
         $related_field = array_shift($field_parts);
         $column_name = $field_parts[count($field_parts) - 1];
 
         // Check if the related field exists in this model
+
         if (!isset($model->related_fields[$related_field])) {
             throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $related_field . ')');
         }
 
         // Verify the related field is readable
+
         if (!in_array($related_field, $model->allowed_fields_read)) {
             throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $related_field . ')');
         }
@@ -421,15 +426,19 @@ abstract class ResourceModel extends OrmModel
         $rel_model = $this->getRelatedModel($model->related_fields[$related_field]);
 
         // Create join for this level
+
         $rel_alias = $this->getTableAlias($rel_model->getTableName());
 
         $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
             $parent_alias . '.' . $related_field => $rel_alias . '.' . $rel_model->primary_key
         ];
 
-        // If we're at the final field level (column_name is the actual column)
+        // If at the final field level (column_name is the actual column)
+
         if (count($field_parts) === 1) {
+
             // Verify the column is readable
+
             if (!in_array($column_name, $rel_model->allowed_fields_read)) {
                 throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $column_name . ')');
             }
@@ -437,7 +446,9 @@ abstract class ResourceModel extends OrmModel
         }
 
         // Recursively process deeper levels
+
         return $this->createNestedFilterJoins($field_parts, $rel_model, $rel_alias);
+
     }
 
     /**
@@ -2064,21 +2075,12 @@ abstract class ResourceModel extends OrmModel
 
                 if (Arr::get($fields, $field) !== null) {
 
-                    // Where not this ID - use query builder for consistency
-                    $query = $this->newQuery();
+                    // Where not this ID
 
-                    try {
-                        $query->table($this->table_name)
-                            ->select($this->primary_key)
-                            ->where($field, Query::OPERATOR_EQUALS, $fields[$field])
-                            ->where($this->primary_key, Query::OPERATOR_DOES_NOT_EQUAL, $primary_key_id);
-                    } catch (QueryException) {
-                        throw new UnexpectedException('Unable to update resource: Invalid operator when checking unique field');
-                    }
-
-                    $start_time = microtime(true);
-                    $count = $query->aggregate(Query::AGGREGATE_COUNT);
-                    $this->ormService->db->setQueryTime($this->ormService->db->getCurrentConnectionName(), microtime(true) - $start_time);
+                    $count = $this->ormService->db->single("SELECT COUNT(*) FROM $this->table_name WHERE $field = :field AND $this->primary_key != :primaryKey", [
+                        'field' => $fields[$field],
+                        'primaryKey' => $primary_key_id
+                    ]);
 
                     if ($count > 0) {
                         throw new AlreadyExistsException('Unable to update resource: Unique field (' . $field . ') already exists');
@@ -2112,7 +2114,7 @@ abstract class ResourceModel extends OrmModel
                         }
 
                         /*
-                         * Query - use aggregate COUNT for efficiency instead of fetching all rows
+                         * Query
                          */
 
                         $start_time = microtime(true);

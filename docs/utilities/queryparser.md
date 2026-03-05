@@ -81,7 +81,7 @@ $results = $query->list();
 ```
 
 **Note:** Filters can be applied at any level of related fields, including deeply nested relationships 
-(e.g., `tenant.owner.name`). The necessary `JOIN` aliases are automatically created when filtering.
+(e.g., `tenant.owner.name`) up to the [max_related_depth](../models/resourcemodel.md#max_related_depth). The necessary `JOIN` aliases are automatically created when filtering.
 
 To simplify sending queries via an HTTP request, 
 all single dimensional arrays (`fields`, `sort` and `group`) can be defined as a comma-separated string.
