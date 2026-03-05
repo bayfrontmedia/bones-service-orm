@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities
 
+## [1.6.0] - 2026.03.05
+
+### Added
+
+- Added `binary_fields` property to `ResourceModel` to allow for automatic conversion of binary fields to UUIDs
+
 ## [1.3.1] - 2026.01.08
 
 ### Fixed
