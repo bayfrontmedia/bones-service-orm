@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities
 
+## [1.6.1] - 2026.04.23
+
+### Fixed
+
+- Fixed bug in `ResourceModel` where tables were being joined multiple times with different aliases when multiple
+fields from the same related (foreign key) table were being queried
+
 ## [1.6.0] - 2026.03.05
 
 ### Added

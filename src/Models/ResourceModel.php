@@ -381,13 +381,12 @@ abstract class ResourceModel extends OrmModel
     }
 
     /*
-     * $joined_tables can only be used when a table is only joined one time.
-     * If a foreign key table is joined multiple times on the same table,
-     * it must be given a unique alias, as it is joined to a different column on the table.
-     *
-     * Therefore, $joined_tables is not used.
+     * $joined_tables tracks already-joined related tables to prevent duplicate JOINs.
+     * The key is a composite of the related table name and the parent join condition
+     * (e.g., "app_contacts:app_attendance.contact"), so the same table joined via a
+     * different parent column will still receive a unique alias.
      */
-    private array $joined_tables = []; // key = table, value = alias
+    private array $joined_tables = []; // key = "related_table:parent_table.parent_column", value = alias
 
     private int $join_count = 0;
 
@@ -494,22 +493,22 @@ abstract class ResourceModel extends OrmModel
 
                             $rel_model = $this->getRelatedModel($model->related_fields[$allowed]);
 
-                            if (!isset($this->joined_tables[$rel_model->getTableName()])) {
+                            // Allow recursive joins
+                            $join_from_table = is_string($alias) ? $alias : $model->getTableName();
+                            $join_key = $rel_model->getTableName() . ':' . $join_from_table . '.' . $allowed;
+
+                            if (!isset($this->joined_tables[$join_key])) {
 
                                 $rel_alias = $this->getTableAlias($rel_model->getTableName());
-
-                                // Allow recursive joins
-                                $join_from_table = is_string($alias) ? $alias : $model->getTableName();
 
                                 $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
                                     $join_from_table . '.' . $allowed => $rel_alias . '.' . $rel_model->primary_key
                                 ];
 
-                                // Do not reuse alias
-                                //$this->joined_tables[$rel_model->getTableName()] = $rel_alias;
+                                $this->joined_tables[$join_key] = $rel_alias;
 
                             } else {
-                                $rel_alias = $this->joined_tables[$rel_model->table_name];
+                                $rel_alias = $this->joined_tables[$join_key];
                             }
 
                             $this->selectListFields($query, $rel_model, [$field_exp[1]], ltrim($column . '.' . $allowed, '.'), $rel_alias);
@@ -538,22 +537,22 @@ abstract class ResourceModel extends OrmModel
 
                     $rel_model = $this->getRelatedModel($model->related_fields[$field_exp[0]]);
 
-                    if (!isset($this->joined_tables[$rel_model->getTableName()])) {
+                    // Allow recursive joins
+                    $join_from_table = is_string($alias) ? $alias : $model->getTableName();
+                    $join_key = $rel_model->getTableName() . ':' . $join_from_table . '.' . $field_exp[0];
+
+                    if (!isset($this->joined_tables[$join_key])) {
 
                         $rel_alias = $this->getTableAlias($rel_model->getTableName());
-
-                        // Allow recursive joins
-                        $join_from_table = is_string($alias) ? $alias : $model->getTableName();
 
                         $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
                             $join_from_table . '.' . $field_exp[0] => $rel_alias . '.' . $rel_model->primary_key
                         ];
 
-                        // Do not reuse alias
-                        //$this->joined_tables[$rel_model->getTableName()] = $rel_alias;
+                        $this->joined_tables[$join_key] = $rel_alias;
 
                     } else {
-                        $rel_alias = $this->joined_tables[$rel_model->table_name];
+                        $rel_alias = $this->joined_tables[$join_key];
                     }
 
                     $this->selectListFields($query, $rel_model, [$field_exp[1]], ltrim($column . '.' . $field_exp[0], '.'), $rel_alias);
