@@ -915,6 +915,7 @@ abstract class ResourceModel extends OrmModel
      * @param array $fields
      * @return void
      * @throws InvalidRequestException
+     * @throws UnexpectedException
      */
     private function sortListFields(Query $query, array $fields): void
     {
@@ -925,15 +926,92 @@ abstract class ResourceModel extends OrmModel
 
         } else {
 
+            $resolved_fields = [];
+
             foreach ($fields as $v) {
 
-                if (!in_array(ltrim($v, '-+'), $this->allowed_fields_read)) {
-                    throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $v . ')');
+                $prefix = '';
+
+                if (str_starts_with($v, '-') || str_starts_with($v, '+')) {
+                    $prefix = $v[0];
+                    $v = substr($v, 1);
+                }
+
+                if (str_contains($v, '.')) {
+
+                    $field_exp = explode('.', $v);
+
+                    if (!isset($this->related_fields[$field_exp[0]])) {
+                        throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $prefix . $v . ')');
+                    }
+
+                    if (!in_array($field_exp[0], $this->allowed_fields_read)) {
+                        throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $prefix . $v . ')');
+                    }
+
+                    $field_exp_count = count($field_exp);
+
+                    if ($field_exp_count == 2) {
+
+                        $rel_model = $this->getRelatedModel($this->related_fields[$field_exp[0]]);
+
+                        if (!in_array($field_exp[1], $rel_model->allowed_fields_read)) {
+                            throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $prefix . $v . ')');
+                        }
+
+                        // Check if join already exists
+                        $join_found = false;
+                        $field_exp_except_last = $field_exp[0];
+                        $field_exp_column = $field_exp[1];
+
+                        foreach ($this->list_joins as $list_join) {
+                            if (isset($list_join[$this->table_name . '.' . $field_exp_except_last])) {
+                                $table_exp = explode('.', $list_join[$this->table_name . '.' . $field_exp_except_last]);
+                                $table = $table_exp[0];
+                                $resolved_fields[] = $prefix . $table . '.' . $field_exp_column;
+                                $join_found = true;
+                                break;
+                            }
+                        }
+
+                        if (!$join_found) {
+                            $rel_alias = $this->getTableAlias($rel_model->getTableName());
+
+                            $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
+                                $this->getTableName() . '.' . $field_exp[0] => $rel_alias . '.' . $rel_model->primary_key
+                            ];
+
+                            $resolved_fields[] = $prefix . $rel_alias . '.' . $field_exp_column;
+                        }
+
+                    } else if ($field_exp_count > 2) {
+
+                        // Handle nested sort > 1 level deep
+                        $nested_field = $this->createNestedFilterJoins($field_exp, $this, $this->getTableName());
+
+                        if ($nested_field !== null) {
+                            $resolved_fields[] = $prefix . $nested_field;
+                        } else {
+                            throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $prefix . $v . ')');
+                        }
+
+                    } else {
+                        throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $prefix . $v . ')');
+                    }
+
+                } else {
+
+                    if (!in_array($v, $this->allowed_fields_read)) {
+                        throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $prefix . $v . ')');
+                    }
+
+                    $resolved_fields[] = $prefix . $v;
+
                 }
 
             }
 
-            $query->orderBy($fields);
+            $query->orderBy($resolved_fields);
 
         }
 
@@ -1893,6 +1971,12 @@ abstract class ResourceModel extends OrmModel
 
         $this->filterListFields($query, Arr::undot($fields), $query::CONDITION_AND);
 
+        /*
+         * Sort
+         */
+
+        $this->sortListFields($query, $parser->getSort());
+
         $this->sorted_join_tables[$this->table_name] = $this->table_name; // Pre-initialize base table for recursive join
 
         $joins = $this->sortListJoins($this->list_joins);
@@ -1937,12 +2021,6 @@ abstract class ResourceModel extends OrmModel
          */
 
         $this->searchListFields($query, $parser->getSearch());
-
-        /*
-         * Sort
-         */
-
-        $this->sortListFields($query, $parser->getSort());
 
         /*
          * Group
