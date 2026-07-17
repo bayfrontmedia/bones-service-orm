@@ -17,7 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added ability to sort by nested properties
+- Added ability to sort by nested properties in `ResourceModel` class
+
+### Changed
+
+- Miscellaneous improvements and cleanup of `ResourceModel` class
 
 ## [1.6.1] - 2026.04.23
 

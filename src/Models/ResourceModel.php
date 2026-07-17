@@ -317,7 +317,7 @@ abstract class ResourceModel extends OrmModel
     }
 
     /**
-     * Ensure filter is only applied once per model.
+     * Ensure filter is only applied once per joined table reference.
      *
      * @var array
      */
@@ -328,52 +328,60 @@ abstract class ResourceModel extends OrmModel
      *
      * @param Query $query
      * @param ResourceModel $model
+     * @param string|null $table_ref
      * @return void
      * @throws InvalidRequestException
      */
-    private function filterSoftDeletedRelatedFields(Query $query, ResourceModel $model): void
+    private function filterSoftDeletedRelatedFields(Query $query, ResourceModel $model, ?string $table_ref = null): void
     {
 
         /*
          * Trait: SoftDeletes
          */
 
-        if (!in_array($model::class, $this->soft_deleted_models) && in_array(SoftDeletes::class, Helpers::classUses($model))) {
+        if (!in_array(SoftDeletes::class, Helpers::classUses($model))) {
+            return;
+        }
 
-            $this->soft_deleted_models[] = $model::class;
+        $table_ref = $table_ref ?? $model->table_name;
 
-            /** @var SoftDeletes $model */
-            $deleted_at_field = $model->getDeletedAtField();
+        // Apply at most once per joined alias/table reference
+        if (in_array($table_ref, $this->soft_deleted_models)) {
+            return;
+        }
 
-            if (in_array(SoftDeletes::class, Helpers::classUses($this))) {
+        $this->soft_deleted_models[] = $table_ref;
 
-                /** @var SoftDeletes $this */
-                if ($this->only_trashed === true) {
+        /** @var SoftDeletes $model */
+        $deleted_at_field = $model->getDeletedAtField();
 
-                    try {
-                        $query->where($model->table_name . '.' . $deleted_at_field, $query::OPERATOR_NOT_NULL, true);
-                    } catch (QueryException) {
-                        throw new InvalidRequestException('Unable to list resource: Invalid filter for only trashed related soft delete field (' . $deleted_at_field . ')');
-                    }
+        if (in_array(SoftDeletes::class, Helpers::classUses($this))) {
 
-                } else if ($this->with_trashed === false) {
-
-                    try {
-                        $query->where($model->table_name . '.' . $deleted_at_field, $query::OPERATOR_NULL, true);
-                    } catch (QueryException) {
-                        throw new InvalidRequestException('Unable to list resource: Invalid filter for related soft delete field (' . $deleted_at_field . ')');
-                    }
-
-                }
-
-            } else {
+            /** @var SoftDeletes $this */
+            if ($this->only_trashed === true) {
 
                 try {
-                    $query->where($model->table_name . '.' . $deleted_at_field, $query::OPERATOR_NULL, true);
+                    $query->where($table_ref . '.' . $deleted_at_field, $query::OPERATOR_NOT_NULL, true);
+                } catch (QueryException) {
+                    throw new InvalidRequestException('Unable to list resource: Invalid filter for only trashed related soft delete field (' . $deleted_at_field . ')');
+                }
+
+            } else if ($this->with_trashed === false) {
+
+                try {
+                    $query->where($table_ref . '.' . $deleted_at_field, $query::OPERATOR_NULL, true);
                 } catch (QueryException) {
                     throw new InvalidRequestException('Unable to list resource: Invalid filter for related soft delete field (' . $deleted_at_field . ')');
                 }
 
+            }
+
+        } else {
+
+            try {
+                $query->where($table_ref . '.' . $deleted_at_field, $query::OPERATOR_NULL, true);
+            } catch (QueryException) {
+                throw new InvalidRequestException('Unable to list resource: Invalid filter for related soft delete field (' . $deleted_at_field . ')');
             }
 
         }
@@ -390,6 +398,50 @@ abstract class ResourceModel extends OrmModel
 
     private int $join_count = 0;
 
+    /**
+     * Get an existing alias for a related join, or create the join if needed.
+     *
+     * The join key includes the parent alias/table and the relationship field
+     * so the same relationship path always resolves to the same alias.
+     *
+     * @param ResourceModel $parent_model
+     * @param string $parent_alias
+     * @param string $related_field
+     * @return string
+     * @throws UnexpectedException
+     */
+    private function getOrCreateJoinAlias(ResourceModel $parent_model, string $parent_alias, string $related_field): string
+    {
+
+        if (!isset($parent_model->related_fields[$related_field])) {
+            throw new UnexpectedException('Unable to get related model: Invalid related field (' . $related_field . ')');
+        }
+
+        $rel_model = $this->getRelatedModel($parent_model->related_fields[$related_field]);
+
+        // Canonical key for this exact relationship path
+        $join_key = $rel_model->getTableName() . ':' . $parent_alias . '.' . $related_field;
+
+        if (isset($this->joined_tables[$join_key])) {
+            return $this->joined_tables[$join_key];
+        }
+
+        $rel_alias = $this->getTableAlias($rel_model->getTableName());
+
+        $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
+            $parent_alias . '.' . $related_field => $rel_alias . '.' . $rel_model->primary_key
+        ];
+
+        $this->joined_tables[$join_key] = $rel_alias;
+
+        return $rel_alias;
+
+    }
+
+    /**
+     * @param string $table_name
+     * @return string
+     */
     private function getTableAlias(string $table_name): string
     {
         $this->join_count++;
@@ -436,11 +488,7 @@ abstract class ResourceModel extends OrmModel
 
         // Create join for this level
 
-        $rel_alias = $this->getTableAlias($rel_model->getTableName());
-
-        $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
-            $parent_alias . '.' . $related_field => $rel_alias . '.' . $rel_model->primary_key
-        ];
+        $rel_alias = $this->getOrCreateJoinAlias($model, $parent_alias, $related_field);
 
         // If at the final field level (column_name is the actual column)
 
@@ -451,6 +499,7 @@ abstract class ResourceModel extends OrmModel
             if (!in_array($column_name, $rel_model->allowed_fields_read)) {
                 throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $column_name . ')');
             }
+
             return $rel_alias . '.' . $column_name;
         }
 
@@ -495,21 +544,7 @@ abstract class ResourceModel extends OrmModel
 
                             // Allow recursive joins
                             $join_from_table = is_string($alias) ? $alias : $model->getTableName();
-                            $join_key = $rel_model->getTableName() . ':' . $join_from_table . '.' . $allowed;
-
-                            if (!isset($this->joined_tables[$join_key])) {
-
-                                $rel_alias = $this->getTableAlias($rel_model->getTableName());
-
-                                $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
-                                    $join_from_table . '.' . $allowed => $rel_alias . '.' . $rel_model->primary_key
-                                ];
-
-                                $this->joined_tables[$join_key] = $rel_alias;
-
-                            } else {
-                                $rel_alias = $this->joined_tables[$join_key];
-                            }
+                            $rel_alias = $this->getOrCreateJoinAlias($model, $join_from_table, $allowed);
 
                             $this->selectListFields($query, $rel_model, [$field_exp[1]], ltrim($column . '.' . $allowed, '.'), $rel_alias);
 
@@ -539,21 +574,7 @@ abstract class ResourceModel extends OrmModel
 
                     // Allow recursive joins
                     $join_from_table = is_string($alias) ? $alias : $model->getTableName();
-                    $join_key = $rel_model->getTableName() . ':' . $join_from_table . '.' . $field_exp[0];
-
-                    if (!isset($this->joined_tables[$join_key])) {
-
-                        $rel_alias = $this->getTableAlias($rel_model->getTableName());
-
-                        $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
-                            $join_from_table . '.' . $field_exp[0] => $rel_alias . '.' . $rel_model->primary_key
-                        ];
-
-                        $this->joined_tables[$join_key] = $rel_alias;
-
-                    } else {
-                        $rel_alias = $this->joined_tables[$join_key];
-                    }
+                    $rel_alias = $this->getOrCreateJoinAlias($model, $join_from_table, $field_exp[0]);
 
                     $this->selectListFields($query, $rel_model, [$field_exp[1]], ltrim($column . '.' . $field_exp[0], '.'), $rel_alias);
 
@@ -569,9 +590,9 @@ abstract class ResourceModel extends OrmModel
                         $query->select($model->allowed_fields_read);
                     } else { // Prefix
 
-                        foreach ($model->allowed_fields_read as $allowed) {
+                        $sel_table = $model->table_name;
 
-                            $sel_table = $model->table_name;
+                        foreach ($model->allowed_fields_read as $allowed) {
 
                             if (is_string($alias)) {
                                 $sel_table = $alias;
@@ -581,7 +602,7 @@ abstract class ResourceModel extends OrmModel
 
                         }
 
-                        $this->filterSoftDeletedRelatedFields($query, $model);
+                        $this->filterSoftDeletedRelatedFields($query, $model, $sel_table);
 
                     }
 
@@ -612,7 +633,7 @@ abstract class ResourceModel extends OrmModel
 
                         $query->select($sel_table . '.' . $field . " AS '" . $this->getPrefixedField($model->table_name, $field, $column) . "'");
 
-                        $this->filterSoftDeletedRelatedFields($query, $model);
+                        $this->filterSoftDeletedRelatedFields($query, $model, $sel_table);
 
                     }
 
@@ -630,7 +651,7 @@ abstract class ResourceModel extends OrmModel
 
                         $query->select($sel_table . '.' . $field . " AS '" . $this->getPrefixedField($model->table_name, $field, $column) . "'");
 
-                        $this->filterSoftDeletedRelatedFields($query, $model);
+                        $this->filterSoftDeletedRelatedFields($query, $model, $sel_table);
 
                     }
 
@@ -680,61 +701,37 @@ abstract class ResourceModel extends OrmModel
                 if (str_contains($field, '.')) {
 
                     $field_exp = explode('.', $field);
+                    $field_exp_count = count($field_exp);
 
                     if (!isset($this->related_fields[$field_exp[0]])) {
                         throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $field . ')');
                     }
 
-                    // Last element is the field- need to check tables
-                    $field_exp_except_last = implode('.', array_slice($field_exp, 0, -1));
-                    $field_exp_column = end($field_exp);
-
-                    foreach ($this->list_joins as $list_join) {
-
-                        if (isset($list_join[$this->table_name . '.' . $field_exp_except_last])) {
-
-                            $table_exp = explode('.', $list_join[$this->table_name . '.' . $field_exp_except_last]);
-                            $table = $table_exp[0];
-                            $field = $table . '.' . $field_exp_column;
-                            $join_found = true;
-
-                            break;
-
-                        }
-
+                    if (!in_array($field_exp[0], $this->allowed_fields_read)) {
+                        throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $field . ')');
                     }
 
-                    if ($join_found === false) { // Not yet in the list of joins
+                    if ($field_exp_count == 2) {
 
                         $rel_model = $this->getRelatedModel($this->related_fields[$field_exp[0]]);
 
-                        $field_exp_count = count($field_exp);
+                        if (!in_array($field_exp[1], $rel_model->allowed_fields_read)) {
+                            throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $field . ')');
+                        }
 
-                        if ($field_exp_count == 2) {
+                        $rel_alias = $this->getOrCreateJoinAlias($this, $this->getTableName(), $field_exp[0]);
 
-                            if (!in_array($field_exp[1], $rel_model->allowed_fields_read)) {
-                                throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $field . ')');
-                            }
+                        $field = $rel_alias . '.' . $field_exp[1];
+                        $join_found = true;
 
-                            $rel_alias = $this->getTableAlias($rel_model->getTableName());
+                    } else if ($field_exp_count > 2) {
 
-                            $this->list_joins[$rel_model->getTableName() . ' AS ' . $rel_alias] = [
-                                $this->getTableName() . '.' . $field_exp[0] => $rel_alias . '.' . $rel_model->primary_key
-                            ];
+                        // Handle nested filters > 1 level deep
+                        $nested_field = $this->createNestedFilterJoins($field_exp, $this, $this->getTableName());
 
-                            $field = $rel_alias . '.' . $field_exp_column;
+                        if ($nested_field !== null) {
+                            $field = $nested_field;
                             $join_found = true;
-
-                        } else if ($field_exp_count > 2) {
-
-                            // Handle nested filters > 1 level deep
-                            $nested_field = $this->createNestedFilterJoins($field_exp, $this, $this->getTableName());
-
-                            if ($nested_field !== null) {
-                                $field = $nested_field;
-                                $join_found = true;
-                            }
-
                         }
 
                     }
@@ -803,9 +800,57 @@ abstract class ResourceModel extends OrmModel
                                     throw new InvalidRequestException('Unable to list resource: Invalid filter definition value for field (' . $field . ')');
                                 }
 
+                                $resolved_col = $col;
+
+                                if (str_contains($col, '.')) {
+
+                                    $col_exp = explode('.', $col);
+                                    $col_exp_count = count($col_exp);
+
+                                    if (!isset($this->related_fields[$col_exp[0]])) {
+                                        throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $col . ')');
+                                    }
+
+                                    if (!in_array($col_exp[0], $this->allowed_fields_read)) {
+                                        throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $col . ')');
+                                    }
+
+                                    if ($col_exp_count == 2) {
+
+                                        $rel_model = $this->getRelatedModel($this->related_fields[$col_exp[0]]);
+
+                                        if (!in_array($col_exp[1], $rel_model->allowed_fields_read)) {
+                                            throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $col . ')');
+                                        }
+
+                                        $rel_alias = $this->getOrCreateJoinAlias($this, $this->getTableName(), $col_exp[0]);
+                                        $resolved_col = $rel_alias . '.' . $col_exp[1];
+
+                                    } else if ($col_exp_count > 2) {
+
+                                        $nested_col = $this->createNestedFilterJoins($col_exp, $this, $this->getTableName());
+
+                                        if ($nested_col === null) {
+                                            throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $col . ')');
+                                        }
+
+                                        $resolved_col = $nested_col;
+
+                                    }
+
+                                } else if (!in_array($col, $this->allowed_fields_read)) {
+                                    throw new InvalidRequestException('Unable to list resource: Invalid filter field (' . $col . ')');
+                                }
+
                                 foreach ($definition as $operator => $v) {
 
                                     // Convert UUID to binary for binary fields
+
+                                    /*
+                                    if (in_array($resolved_col, $this->binary_fields) && is_string($v)) {
+                                        $v = Str::uuidToBin($v);
+                                    }
+                                    */
 
                                     if (in_array($col, $this->binary_fields) && is_string($v)) {
                                         $v = Str::uuidToBin($v);
@@ -814,9 +859,9 @@ abstract class ResourceModel extends OrmModel
                                     try {
 
                                         if (strtoupper(ltrim($field, '_')) == $query::CONDITION_OR) {
-                                            $query->orWhere($col, $operator, $v);
+                                            $query->orWhere($resolved_col, $operator, $v);
                                         } else {
-                                            $query->where($col, $operator, $v);
+                                            $query->where($resolved_col, $operator, $v);
                                         }
 
                                     } catch (QueryException) {
@@ -915,6 +960,7 @@ abstract class ResourceModel extends OrmModel
      * @param array $fields
      * @return void
      * @throws InvalidRequestException
+     * @throws UnexpectedException
      */
     private function sortListFields(Query $query, array $fields): void
     {
@@ -925,15 +971,77 @@ abstract class ResourceModel extends OrmModel
 
         } else {
 
+            $resolved_fields = [];
+
             foreach ($fields as $v) {
 
+                /*
                 if (!in_array(ltrim($v, '-+'), $this->allowed_fields_read)) {
                     throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $v . ')');
+                }
+                */
+
+                $prefix = '';
+
+                if (str_starts_with($v, '-') || str_starts_with($v, '+')) {
+                    $prefix = $v[0];
+                    $v = substr($v, 1);
+                }
+
+                if (str_contains($v, '.')) {
+
+                    $field_exp = explode('.', $v);
+
+                    if (!isset($this->related_fields[$field_exp[0]])) {
+                        throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $prefix . $v . ')');
+                    }
+
+                    if (!in_array($field_exp[0], $this->allowed_fields_read)) {
+                        throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $prefix . $v . ')');
+                    }
+
+                    $field_exp_count = count($field_exp);
+
+                    if ($field_exp_count == 2) {
+
+                        $rel_model = $this->getRelatedModel($this->related_fields[$field_exp[0]]);
+
+                        if (!in_array($field_exp[1], $rel_model->allowed_fields_read)) {
+                            throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $prefix . $v . ')');
+                        }
+
+                        $rel_alias = $this->getOrCreateJoinAlias($this, $this->getTableName(), $field_exp[0]);
+                        $resolved_fields[] = $prefix . $rel_alias . '.' . $field_exp[1];
+
+                    } else if ($field_exp_count > 2) {
+
+                        // Handle nested sort > 1 level deep
+
+                        $nested_field = $this->createNestedFilterJoins($field_exp, $this, $this->getTableName());
+
+                        if ($nested_field !== null) {
+                            $resolved_fields[] = $prefix . $nested_field;
+                        } else {
+                            throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $prefix . $v . ')');
+                        }
+
+                    } else {
+                        throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $prefix . $v . ')');
+                    }
+
+                } else {
+
+                    if (!in_array($v, $this->allowed_fields_read)) {
+                        throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $prefix . $v . ')');
+                    }
+
+                    $resolved_fields[] = $prefix . $v;
+
                 }
 
             }
 
-            $query->orderBy($fields);
+            $query->orderBy($resolved_fields);
 
         }
 
@@ -1761,6 +1869,7 @@ abstract class ResourceModel extends OrmModel
      * Tables which have been sorted.
      *
      * @var array
+     * @deprecated This property is no longer needed as all of the join aliases are consistently created earlier
      */
     private array $sorted_join_tables = []; // key = table, value = table or alias
 
@@ -1769,6 +1878,7 @@ abstract class ResourceModel extends OrmModel
      *
      * @param array $array
      * @return array
+     * @deprecated This method is no longer needed as all of the join aliases are consistently created earlier
      */
     private function sortListJoins(array $array): array
     {
@@ -1893,9 +2003,20 @@ abstract class ResourceModel extends OrmModel
 
         $this->filterListFields($query, Arr::undot($fields), $query::CONDITION_AND);
 
-        $this->sorted_join_tables[$this->table_name] = $this->table_name; // Pre-initialize base table for recursive join
+        /*
+         * Sort
+         */
 
-        $joins = $this->sortListJoins($this->list_joins);
+        $this->sortListFields($query, $parser->getSort());
+
+        //$this->sorted_join_tables[$this->table_name] = $this->table_name; // Pre-initialize base table for recursive join
+
+        /*
+         * sortListJoins is no longer needed as all of the join aliases are consistently created earlier
+         */
+        //$joins = $this->sortListJoins($this->list_joins);
+
+        $joins = $this->list_joins;
 
         foreach ($joins as $table => $cols) {
             foreach ($cols as $col1 => $col2) {
@@ -1939,12 +2060,6 @@ abstract class ResourceModel extends OrmModel
         $this->searchListFields($query, $parser->getSearch());
 
         /*
-         * Sort
-         */
-
-        $this->sortListFields($query, $parser->getSort());
-
-        /*
          * Group
          */
 
@@ -1972,13 +2087,18 @@ abstract class ResourceModel extends OrmModel
          * Reset
          */
 
-        $this->list_joins = []; // Reset
-        $this->joined_tables = []; // Reset
-        $this->join_count = 0; // Reset
+        $this->list_joins = [];
+        $this->joined_tables = [];
+        $this->join_count = 0;
+        $this->soft_deleted_models = [];
+        $this->condition_opened = false;
 
         /*
          * Query
          */
+
+
+
 
         $start_time = microtime(true);
         $get = $query->get();
