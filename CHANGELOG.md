@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities
 
+## [1.7.0] - 2026.07.17
+
+### Added
+
+- Added ability to sort by nested properties in `ResourceModel` class
+
+### Changed
+
+- Miscellaneous improvements and cleanup of `ResourceModel` class
+
 ## [1.6.1] - 2026.04.23
 
 ### Fixed
