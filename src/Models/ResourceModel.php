@@ -975,12 +975,6 @@ abstract class ResourceModel extends OrmModel
 
             foreach ($fields as $v) {
 
-                /*
-                if (!in_array(ltrim($v, '-+'), $this->allowed_fields_read)) {
-                    throw new InvalidRequestException('Unable to list resource: Invalid sort field (' . $v . ')');
-                }
-                */
-
                 $prefix = '';
 
                 if (str_starts_with($v, '-') || str_starts_with($v, '+')) {
@@ -1866,80 +1860,6 @@ abstract class ResourceModel extends OrmModel
     }
 
     /**
-     * Tables which have been sorted.
-     *
-     * @var array
-     * @deprecated This property is no longer needed as all of the join aliases are consistently created earlier
-     */
-    private array $sorted_join_tables = []; // key = table, value = table or alias
-
-    /**
-     * Sort joined tables to ensure aliases are being used, if existing.
-     *
-     * @param array $array
-     * @return array
-     * @deprecated This method is no longer needed as all of the join aliases are consistently created earlier
-     */
-    private function sortListJoins(array $array): array
-    {
-
-        /*
-         * $array: key = table, value = array of join cols where key = col1 and value = col2
-         */
-
-        $return = [];
-
-        foreach ($array as $table => $cols) { // $table = "table" or "table AS alias"
-
-            foreach ($cols as $col1 => $col2) { // $col1, $col2 used by $query->leftJoin
-
-                $table_exp = explode(' AS ', $table, 2);
-
-                // Ensure table is saved
-
-                if (isset($table_exp[1])) { // If an alias
-
-                    if (!isset($this->sorted_join_tables[$table_exp[0]])) {
-                        $this->sorted_join_tables[$table_exp[0]] = $table_exp[1];
-                    }
-
-                } else { // If no alias (the table)
-
-                    if (!isset($this->sorted_join_tables[$table])) {
-                        $this->sorted_join_tables[$table] = $table;
-                    }
-
-                }
-
-                $col1_exp = explode('.', $col1, 2); // $col1_exp[0] = table, $col1_exp[1] = column
-
-                if (isset($this->sorted_join_tables[$col1_exp[0]])) { // If a known table/alias
-
-                    // Overwrite original $col1 using known table/alias
-
-                    $col1 = $this->sorted_join_tables[$col1_exp[0]];
-
-                    if (isset($col1_exp[1])) { // Append column, if existing
-                        $col1 = $col1 . '.' . $col1_exp[1];
-                    }
-
-                }
-
-                $return[$table] = [
-                    $col1 => $col2,
-                ];
-
-            }
-
-        }
-
-        $this->sorted_join_tables = []; // Reset
-
-        return $return;
-
-    }
-
-    /**
      * Iterate fields to apply query filter to all values.
      *
      * @param array $fields
@@ -2008,13 +1928,6 @@ abstract class ResourceModel extends OrmModel
          */
 
         $this->sortListFields($query, $parser->getSort());
-
-        //$this->sorted_join_tables[$this->table_name] = $this->table_name; // Pre-initialize base table for recursive join
-
-        /*
-         * sortListJoins is no longer needed as all of the join aliases are consistently created earlier
-         */
-        //$joins = $this->sortListJoins($this->list_joins);
 
         $joins = $this->list_joins;
 
@@ -2096,9 +2009,6 @@ abstract class ResourceModel extends OrmModel
         /*
          * Query
          */
-
-
-
 
         $start_time = microtime(true);
         $get = $query->get();
