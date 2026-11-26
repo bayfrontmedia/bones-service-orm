@@ -47,6 +47,28 @@ class OrmCollection
     }
 
     /**
+     * Protect against SQL injection by validating aggregate column names.
+     *
+     * @param string $fx
+     * @param string $col
+     * @return bool
+     */
+    private function isValidAggregateColumn(string $fx, string $col): bool
+    {
+
+        if ($col === '*') {
+            return $fx === $this->query::AGGREGATE_COUNT;
+        }
+
+        if (!in_array($col, $this->resourceModel->getAllowedFieldsRead(), true)) {
+            return false;
+        }
+
+        return true;
+
+    }
+
+    /**
      * Get model instance of collection.
      *
      * @return ResourceModel
@@ -267,8 +289,13 @@ class OrmCollection
                     throw new InvalidRequestException('Unable to list resource: Invalid aggregate function (' . $fx . ')');
                 }
 
+                if (!is_string($col) || !$this->isValidAggregateColumn($fx, $col)) {
+                    throw new InvalidRequestException('Unable to list resource: Invalid aggregate column');
+                }
+
                 $start_time = microtime(true);
-                $return[$col][$fx] = $this->query->aggregate($fx, $col);
+                $column = $col === '*' ? '*' : $this->resourceModel->getTableName() . '.' . $col; // Support joins
+                $return[$col][$fx] = $this->query->aggregate($fx, $column);
                 $this->resourceModel->ormService->db->setQueryTime($this->resourceModel->ormService->db->getCurrentConnectionName(), microtime(true) - $start_time);
 
             }
